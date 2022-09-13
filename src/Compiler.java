@@ -9,8 +9,7 @@ public class Compiler {
         try {
             String code = new String(Files.readAllBytes(Paths.get("testfile.txt")), StandardCharsets.UTF_8);
             List<Token> tokens = TokenSplit.getTokens(code);
-            String output = TokenOutput.getOutput(tokens);
-            System.out.println(output);
+            String output = TokenOutput.output(tokens);
             Files.write(Paths.get("output.txt"), output.getBytes(StandardCharsets.UTF_8));
         }
         catch (IOException e) {

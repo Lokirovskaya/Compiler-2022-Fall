@@ -3,54 +3,58 @@ import java.util.List;
 import java.util.Map;
 
 public class TokenOutput {
-    private static final Map<TokenType, String> tokenTypeOutputNameMap = new HashMap<>();
+    private static final Map<TokenType, String> tokenTypeOutputMap = new HashMap<>();
 
-    static String getOutput(List<Token> tokens) {
+    static String output(List<Token> tokens) {
         StringBuilder sb = new StringBuilder();
-        for (Token token : tokens) {
-            sb.append(String.format("%s %s\n", tokenTypeOutputNameMap.get(token.type), token.name));
+        for (Token t : tokens) {
+            sb.append(String.format("%s %s\n", getTokenOutputTypeName(t), t.name));
         }
         return sb.toString();
     }
 
+    static String getTokenOutputTypeName(Token token) {
+        return tokenTypeOutputMap.get(token.type);
+    }
+
     static {
-        tokenTypeOutputNameMap.put(TokenType.IDENTIFIER, "IDENFR");
-        tokenTypeOutputNameMap.put(TokenType.INTEGER_CONST, "INTCON");
-        tokenTypeOutputNameMap.put(TokenType.STRING_CONST, "STRCON");
-        tokenTypeOutputNameMap.put(TokenType.MAIN, "MAINTK");
-        tokenTypeOutputNameMap.put(TokenType.CONST, "CONSTTK");
-        tokenTypeOutputNameMap.put(TokenType.INT, "INTTK");
-        tokenTypeOutputNameMap.put(TokenType.BREAK, "BREAKTK");
-        tokenTypeOutputNameMap.put(TokenType.CONTINUE, "CONTINUETK");
-        tokenTypeOutputNameMap.put(TokenType.IF, "IFTK");
-        tokenTypeOutputNameMap.put(TokenType.ELSE, "ELSETK");
-        tokenTypeOutputNameMap.put(TokenType.WHILE, "WHILETK");
-        tokenTypeOutputNameMap.put(TokenType.GETINT, "GETINTTK");
-        tokenTypeOutputNameMap.put(TokenType.PRINTF, "PRINTFTK");
-        tokenTypeOutputNameMap.put(TokenType.RETURN, "RETURNTK");
-        tokenTypeOutputNameMap.put(TokenType.VOID, "VOIDTK");
-        tokenTypeOutputNameMap.put(TokenType.NOT, "NOT");
-        tokenTypeOutputNameMap.put(TokenType.AND, "AND");
-        tokenTypeOutputNameMap.put(TokenType.OR, "OR");
-        tokenTypeOutputNameMap.put(TokenType.PLUS, "PLUS");
-        tokenTypeOutputNameMap.put(TokenType.MINUS, "MINU");
-        tokenTypeOutputNameMap.put(TokenType.MULTIPLY, "MULT");
-        tokenTypeOutputNameMap.put(TokenType.DIVIDE, "DIV");
-        tokenTypeOutputNameMap.put(TokenType.MOD, "MOD");
-        tokenTypeOutputNameMap.put(TokenType.LESS, "LSS");
-        tokenTypeOutputNameMap.put(TokenType.LESS_EQUAL, "LEQ");
-        tokenTypeOutputNameMap.put(TokenType.GREATER, "GRE");
-        tokenTypeOutputNameMap.put(TokenType.GREATER_EQUAL, "GEQ");
-        tokenTypeOutputNameMap.put(TokenType.EQUAL, "EQL");
-        tokenTypeOutputNameMap.put(TokenType.NOT_EQUAL, "NEQ");
-        tokenTypeOutputNameMap.put(TokenType.ASSIGN, "ASSIGN");
-        tokenTypeOutputNameMap.put(TokenType.SEMICOLON, "SEMICN");
-        tokenTypeOutputNameMap.put(TokenType.COMMA, "COMMA");
-        tokenTypeOutputNameMap.put(TokenType.LEFT_PAREN, "LPARENT");
-        tokenTypeOutputNameMap.put(TokenType.RIGHT_PAREN, "RPARENT");
-        tokenTypeOutputNameMap.put(TokenType.LEFT_BRACKET, "LBRACK");
-        tokenTypeOutputNameMap.put(TokenType.RIGHT_BRACKET, "RBRACK");
-        tokenTypeOutputNameMap.put(TokenType.LEFT_BRACE, "LBRACE");
-        tokenTypeOutputNameMap.put(TokenType.RIGHT_BRACE, "RBRACE");
+        tokenTypeOutputMap.put(TokenType.IDENTIFIER, "IDENFR");
+        tokenTypeOutputMap.put(TokenType.INTEGER_CONST, "INTCON");
+        tokenTypeOutputMap.put(TokenType.STRING_CONST, "STRCON");
+        tokenTypeOutputMap.put(TokenType.MAIN, "MAINTK");
+        tokenTypeOutputMap.put(TokenType.CONST, "CONSTTK");
+        tokenTypeOutputMap.put(TokenType.INT, "INTTK");
+        tokenTypeOutputMap.put(TokenType.BREAK, "BREAKTK");
+        tokenTypeOutputMap.put(TokenType.CONTINUE, "CONTINUETK");
+        tokenTypeOutputMap.put(TokenType.IF, "IFTK");
+        tokenTypeOutputMap.put(TokenType.ELSE, "ELSETK");
+        tokenTypeOutputMap.put(TokenType.WHILE, "WHILETK");
+        tokenTypeOutputMap.put(TokenType.GETINT, "GETINTTK");
+        tokenTypeOutputMap.put(TokenType.PRINTF, "PRINTFTK");
+        tokenTypeOutputMap.put(TokenType.RETURN, "RETURNTK");
+        tokenTypeOutputMap.put(TokenType.VOID, "VOIDTK");
+        tokenTypeOutputMap.put(TokenType.NOT, "NOT");
+        tokenTypeOutputMap.put(TokenType.AND, "AND");
+        tokenTypeOutputMap.put(TokenType.OR, "OR");
+        tokenTypeOutputMap.put(TokenType.PLUS, "PLUS");
+        tokenTypeOutputMap.put(TokenType.MINUS, "MINU");
+        tokenTypeOutputMap.put(TokenType.MULTIPLY, "MULT");
+        tokenTypeOutputMap.put(TokenType.DIVIDE, "DIV");
+        tokenTypeOutputMap.put(TokenType.MOD, "MOD");
+        tokenTypeOutputMap.put(TokenType.LESS, "LSS");
+        tokenTypeOutputMap.put(TokenType.LESS_EQUAL, "LEQ");
+        tokenTypeOutputMap.put(TokenType.GREATER, "GRE");
+        tokenTypeOutputMap.put(TokenType.GREATER_EQUAL, "GEQ");
+        tokenTypeOutputMap.put(TokenType.EQUAL, "EQL");
+        tokenTypeOutputMap.put(TokenType.NOT_EQUAL, "NEQ");
+        tokenTypeOutputMap.put(TokenType.ASSIGN, "ASSIGN");
+        tokenTypeOutputMap.put(TokenType.SEMICOLON, "SEMICN");
+        tokenTypeOutputMap.put(TokenType.COMMA, "COMMA");
+        tokenTypeOutputMap.put(TokenType.LEFT_PAREN, "LPARENT");
+        tokenTypeOutputMap.put(TokenType.RIGHT_PAREN, "RPARENT");
+        tokenTypeOutputMap.put(TokenType.LEFT_BRACKET, "LBRACK");
+        tokenTypeOutputMap.put(TokenType.RIGHT_BRACKET, "RBRACK");
+        tokenTypeOutputMap.put(TokenType.LEFT_BRACE, "LBRACE");
+        tokenTypeOutputMap.put(TokenType.RIGHT_BRACE, "RBRACE");
     }
 }
