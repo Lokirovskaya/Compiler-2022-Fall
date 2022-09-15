@@ -1,23 +1,31 @@
+package lexer;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class TokenSplit {
-    static List<Token> getTokens(String code) {
+public class Lexer {
+    private final String code;
+
+    public Lexer(String code) {
+        this.code = code;
+    }
+
+    public List<Token> getTokens() {
         List<String> tokenStrings = getTokenStrings(code);
         return processTokenStrings(tokenStrings);
     }
 
-    private static final String regex = "[a-zA-Z_][a-zA-Z0-9_]*|" + // identifier or keywords
+    private final String regex = "[a-zA-Z_][a-zA-Z0-9_]*|" + // identifier or keywords
             "[0-9]+|\"[^\n]*?\"|" + // int const | string const
             "//[^\\n]*|/\\*.*?\\*/|" + // comments
             "&&|\\|\\||==|>=|<=|!=|" + // 2-letter operators
             "!|\\+|-|\\*|/|%|&|<|>|=|;|,|\\(|\\)|\\[|]|\\{|}|" + // single operators
             "\n"; // (for line number)
-    private static final Pattern pattern = Pattern.compile(regex, Pattern.DOTALL);
+    private final Pattern pattern = Pattern.compile(regex, Pattern.DOTALL);
 
-    private static List<String> getTokenStrings(String code) {
+    private List<String> getTokenStrings(String code) {
         Matcher matcher = pattern.matcher(code);
         List<String> result = new ArrayList<>();
         while (matcher.find()) {
@@ -26,7 +34,7 @@ public class TokenSplit {
         return result;
     }
 
-    private static List<Token> processTokenStrings(List<String> tokenStrings) {
+    private List<Token> processTokenStrings(List<String> tokenStrings) {
         List<Token> tokens = new ArrayList<>();
         int lineNumber = 1;
         for (String s : tokenStrings) {
@@ -43,8 +51,7 @@ public class TokenSplit {
             }
 
             Token token = new Token();
-            token.name = s;
-            token.type = TokenType.getTokenType(s);
+            token.value = s;
             token.lineNumber = lineNumber;
             tokens.add(token);
         }
