@@ -53,6 +53,7 @@ public class Lexer {
             Token token = new Token();
             token.value = s;
             token.lineNumber = lineNumber;
+            token.type = TokenClassify.getTokenType(s);
             tokens.add(token);
         }
         return tokens;

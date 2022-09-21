@@ -1,64 +1,23 @@
-package parser;
+package lexer;
 
-import lexer.Token;
-
-import static parser.TreeNodeType.*;
-
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-
-public class TerminalReader {
-    private final List<Terminal> terminalList = new ArrayList<>();
-    private int i = 0;
-
-    void init(List<Token> tokenList) {
-        terminalList.clear();
-        i = 0;
-        for (Token token : tokenList) {
-            TreeNodeType type = TokenClassify.getTokenType(token);
-            terminalList.add(new Terminal(type, token.value, token.lineNumber));
-        }
-    }
-
-    void next() {
-        if (i < terminalList.size()) i++;
-    }
-
-    Terminal getNode(int offset) {
-        return terminalList.get(i + offset);
-    }
-
-    Terminal getNode() {
-        return getNode(0);
-    }
-
-    TreeNodeType get(int offset) {
-        if (i + offset < 0 || i + offset >= terminalList.size())
-            return NULL;
-        else return terminalList.get(i + offset).type;
-    }
-
-    TreeNodeType get() {
-        return get(0);
-    }
-}
+import static lexer.Token.TokenType.*;
 
 class TokenClassify {
-    static TreeNodeType getTokenType(Token token) {
-        if (tokenValueTypeMap.containsKey(token.value))
-            return tokenValueTypeMap.get(token.value);
-        else if ('0' <= token.value.charAt(0) && token.value.charAt(0) <= '9')
+    static Token.TokenType getTokenType(String tokenValue) {
+        if (tokenValueTypeMap.containsKey(tokenValue))
+            return tokenValueTypeMap.get(tokenValue);
+        else if ('0' <= tokenValue.charAt(0) && tokenValue.charAt(0) <= '9')
             return INT_CONST;
-        else if (token.value.charAt(0) == '"')
+        else if (tokenValue.charAt(0) == '"')
             return STRING_CONST;
         else
             return IDENTIFIER;
     }
 
-    private static final Map<String, TreeNodeType> tokenValueTypeMap = new HashMap<>();
+    private static final Map<String, Token.TokenType> tokenValueTypeMap = new HashMap<>();
 
     static {
         tokenValueTypeMap.put("main", MAIN);
