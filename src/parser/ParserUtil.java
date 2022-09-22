@@ -74,8 +74,7 @@ class TokenReader {
     }
 
     Token readToken() {
-        if (i >= tokenList.size()) return null;
-        else return tokenList.get(i);
+        return tokenList.get(i);
     }
 
     Token.TokenType read(int offset) {
@@ -85,29 +84,7 @@ class TokenReader {
     }
 
     Token.TokenType read() {
-        if (i >= tokenList.size()) return Token.TokenType.NULL;
-        else return tokenList.get(i).type;
-    }
-
-    void consume(Token.TokenType judge) {
-        Token token = readToken();
-        if (token.type == judge)
-            next();
-        else System.err.printf("Unexpected token %s at line %d\n",
-                token.value, token.lineNumber);
-    }
-
-    // 也是判断并消耗当前 token，但是有多个匹配可能
-    void consume(Token.TokenType... judges) {
-        Token token = readToken();
-        for (Token.TokenType judge : judges) {
-            if (token.type == judge) {
-                next();
-                return;
-            }
-        }
-        System.err.printf("Unexpected token %s at line %d\n",
-                token.value, token.lineNumber);
+        return tokenList.get(i).type;
     }
 }
 
@@ -142,7 +119,6 @@ class TreeBuilder {
     Nonterminal getCurrent() {
         return current;
     }
-
 
     // 将消除的左递归在树上复原
     // 只针对 L ::= R{OR} 还原为 L ::= R | LOR
@@ -180,6 +156,7 @@ class TreeBuilder {
                         for (TreeNode t : L.children) t.parent = L;
                         for (TreeNode t : L_.children) t.parent = L_;
                     }
+                    break;
             }
             // 前序遍历
             for (TreeNode next : L.children) {
