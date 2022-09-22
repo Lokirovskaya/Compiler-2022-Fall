@@ -9,6 +9,7 @@ import static lexer.Token.TokenType.*;
 import static parser.Nonterminal.NonterminalType.*;
 
 public class Parser implements ParserUtil {
+    TreeNode result;
 
     public Parser(List<Token> tokenList) {
         tokenReader.init(tokenList);
@@ -16,13 +17,19 @@ public class Parser implements ParserUtil {
 
     public TreeNode parse() {
         COMPILE_UNIT();
-        return treeBuilder.getRoot();
+        result = treeBuilder.getRoot();
+        System.out.println("Parser Done!");
+        return result;
+    }
+
+    public void output(boolean transformToLeftRecursive, boolean outputFullTree) {
+        new ResultOutput().output(result, transformToLeftRecursive, outputFullTree);
     }
 
     private void COMPILE_UNIT() {
         createNonterminal(_COMPILE_UNIT_);
         Supplier<Boolean> isFunctionDefine = () -> (tokenReader.read() == VOID) || (
-                tokenReader.read(1) == IDENTIFIER && tokenReader.read(2) == LEFT_PAREN
+                tokenReader.read() == INT && tokenReader.read(1) == IDENTIFIER && tokenReader.read(2) == LEFT_PAREN
         );
         Supplier<Boolean> isMainFunctionDefine = () -> tokenReader.read() == INT && tokenReader.read(1) == MAIN;
 
@@ -31,6 +38,7 @@ public class Parser implements ParserUtil {
             else DECLARE();
         }
         MAIN_FUNCTION_DEFINE();
+        endNonterminal();
     }
 
     private void DECLARE() {
@@ -89,6 +97,7 @@ public class Parser implements ParserUtil {
                     consume(COMMA);
                     CONST_INIT_VALUE();
                 }
+                consume(RIGHT_BRACE);
             }
         }
         endNonterminal();
@@ -198,6 +207,11 @@ public class Parser implements ParserUtil {
 
     private void FUNCTION_CALL_PARAM_LIST() {
         createNonterminal(_FUNCTION_CALL_PARAM_LIST_);
+        EXPRESSION();
+        while (tokenReader.read() == COMMA) {
+            consume(COMMA);
+            EXPRESSION();
+        }
         endNonterminal();
     }
 
@@ -214,7 +228,7 @@ public class Parser implements ParserUtil {
     private void BLOCK_ITEM() {
         createNonterminal(_BLOCK_ITEM_);
         Supplier<Boolean> isDeclare = () -> (tokenReader.read() == CONST) || (
-                tokenReader.read() != VOID && tokenReader.read(1) == IDENTIFIER && tokenReader.read(2) != LEFT_PAREN
+                tokenReader.read() == INT && tokenReader.read(1) == IDENTIFIER && tokenReader.read(2) != LEFT_PAREN
         );
         if (isDeclare.get()) DECLARE();
         else STATEMENT();
@@ -223,7 +237,7 @@ public class Parser implements ParserUtil {
 
     private void STATEMENT() {
         createNonterminal(_STATEMENT_);
-        // 一直读到分号为止，如果之间发现了赋值，就是赋值语句
+        // 一直读到分号为止，如果之间发现了 ASSIGN，就是赋值语句
         int i = 0;
         boolean isAssign = false, isGetint = false;
         while (tokenReader.read(i) != SEMICOLON && tokenReader.read(i) != NULL) {
@@ -288,6 +302,7 @@ public class Parser implements ParserUtil {
         else if (isGetint) {
             LEFT_VALUE();
             consume(ASSIGN);
+            consume(GETINT);
             consume(LEFT_PAREN);
             consume(RIGHT_PAREN);
             consume(SEMICOLON);
@@ -301,7 +316,8 @@ public class Parser implements ParserUtil {
         }
         // [Exp] ';'
         else {
-            EXPRESSION();
+            if (tokenReader.read() != SEMICOLON)
+                EXPRESSION();
             consume(SEMICOLON);
         }
         endNonterminal();
@@ -353,7 +369,7 @@ public class Parser implements ParserUtil {
             consume(RIGHT_PAREN);
         }
         // UnaryOp UnaryExp
-        else if (tokenReader.read() == PLUS && tokenReader.read() == MINUS && tokenReader.read() == NOT) {
+        else if (tokenReader.read() == PLUS || tokenReader.read() == MINUS || tokenReader.read() == NOT) {
             UNARY_OPERATOR();
             UNARY_EXPRESSION();
         }

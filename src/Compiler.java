@@ -1,8 +1,6 @@
-import lexer.ResultOutput;
-import lexer.Token;
 import lexer.Lexer;
+import lexer.Token;
 import parser.Parser;
-import parser.TreeDebugger;
 import parser.TreeNode;
 
 import java.io.IOException;
@@ -18,17 +16,15 @@ public class Compiler {
 
             Lexer lexer = new Lexer(code);
             List<Token> tokenList = lexer.getTokens();
-            String output =  ResultOutput.output(tokenList);
-            Files.write(Paths.get("output.txt"), output.getBytes(StandardCharsets.UTF_8));
+//            lexer.output();
 
             Parser parser = new Parser(tokenList);
             TreeNode root = parser.parse();
-
-            TreeDebugger.printTree(root);
-
+            parser.output(true,false);
         }
         catch (IOException e) {
             e.printStackTrace();
         }
+        System.out.println("Compile End!");
     }
 }

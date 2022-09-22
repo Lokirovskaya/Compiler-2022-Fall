@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 
 public class Lexer {
     private final String code;
+    private List<Token> result;
 
     public Lexer(String code) {
         this.code = code;
@@ -14,7 +15,13 @@ public class Lexer {
 
     public List<Token> getTokens() {
         List<String> tokenStrings = getTokenStrings(code);
-        return processTokenStrings(tokenStrings);
+        result = processTokenStrings(tokenStrings);
+        System.out.println("Lexer Done!");
+        return result;
+    }
+
+    public void output() {
+        new ResultOutput(result).output();
     }
 
     private final String regex = "[a-zA-Z_][a-zA-Z0-9_]*|" + // identifier or keywords

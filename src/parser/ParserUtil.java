@@ -10,32 +10,40 @@ public interface ParserUtil {
     TokenReader tokenReader = new TokenReader();
     TreeBuilder treeBuilder = new TreeBuilder();
 
-    // 判断当前 token 是否和指定类型匹配，若匹配，消耗当前 token，不匹配则报错
+    // 消耗当前 token，判断当前 token 是否和指定类型匹配，不匹配则报错
     default void consume(Token.TokenType judge) {
         Token token = tokenReader.readToken();
         if (token.type == judge) {
             treeBuilder.addNode(token);
-            tokenReader.next();
         }
-        else System.err.printf("Unexpected token %s at line %d when parsing %s, expected %s\n",
-                token.value, token.lineNumber,
-                treeBuilder.getCurrent().type.name(), judge.name());
+        else {
+            System.err.printf("Unexpected token '%s' at line %d when parsing %s, expected %s\n",
+                    token.value, token.lineNumber,
+                    treeBuilder.getCurrent().type.name(), judge.name());
+        }
+        tokenReader.next();
     }
 
-    // 也是判断并消耗当前 token，但是有多个匹配可能
+    // 也是消耗并判断当前 token，但是有多个匹配可能
     default void consume(Token.TokenType... judges) {
         Token token = tokenReader.readToken();
+        boolean match = false;
         for (Token.TokenType judge : judges) {
             if (token.type == judge) {
-                treeBuilder.addNode(token);
-                tokenReader.next();
-                return;
+                match = true;
+                break;
             }
         }
-        System.err.printf("Unexpected token %s at line %d when parsing %s, expected %s\n",
-                token.value, token.lineNumber,
-                treeBuilder.getCurrent().type.name(),
-                Arrays.stream(judges).map(Enum::name).collect(Collectors.toList()));
+        if (match) {
+            treeBuilder.addNode(token);
+        }
+        else {
+            System.err.printf("Unexpected token '%s' at line %d when parsing %s, expected %s\n",
+                    token.value, token.lineNumber,
+                    treeBuilder.getCurrent().type.name(),
+                    Arrays.stream(judges).map(Enum::name).collect(Collectors.toList()));
+        }
+        tokenReader.next();
     }
 
     // 创建一个非终结符号，作为当前节点的子节点，并将树的指针指向它

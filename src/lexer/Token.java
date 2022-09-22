@@ -15,4 +15,9 @@ public class Token extends TreeNode {
         LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, EQUAL, NOT_EQUAL, ASSIGN, SEMICOLON, COMMA,
         LEFT_PAREN, RIGHT_PAREN, LEFT_BRACKET, RIGHT_BRACKET, LEFT_BRACE, RIGHT_BRACE
     }
+
+    @Override
+    public String toString() {
+        return ResultOutput.tokenToString(this);
+    }
 }

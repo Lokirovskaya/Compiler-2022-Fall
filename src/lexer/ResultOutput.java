@@ -1,22 +1,38 @@
 package lexer;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static lexer.Token.TokenType.*;
 
-public class ResultOutput {
-    public static String output(List<Token> tokens) {
-        StringBuilder sb = new StringBuilder();
-        for (Token t : tokens) {
-            sb.append(String.format("%s %s\n", getTokenOutputName(t), t.value));
-        }
-        return sb.toString();
+class ResultOutput {
+    private final List<Token> result;
+
+    ResultOutput(List<Token> result) {
+        this.result = result;
     }
 
-    public static String getTokenOutputName(Token token) {
-        return tokenTypeOutputNameMap.get(token.type);
+    void output() {
+        StringBuilder sb = new StringBuilder();
+        for (Token t : result) {
+            sb.append(tokenToString(t)).append('\n');
+        }
+        String str = sb.toString();
+        try {
+            Files.write(Paths.get("output.txt"), str.getBytes(StandardCharsets.UTF_8));
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    static String tokenToString(Token token) {
+        return String.format("%s %s", tokenTypeOutputNameMap.get(token.type), token.value);
     }
 
     private static final Map<Token.TokenType, String> tokenTypeOutputNameMap = new HashMap<>();
