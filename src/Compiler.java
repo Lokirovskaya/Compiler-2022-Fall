@@ -1,3 +1,4 @@
+import error.ErrorList;
 import lexer.Lexer;
 import lexer.Token;
 import parser.Parser;
@@ -18,9 +19,14 @@ public class Compiler {
             List<Token> tokenList = lexer.getTokens();
 //            lexer.output();
 
+            ErrorList.init();
+
             Parser parser = new Parser(tokenList);
             TreeNode root = parser.parse();
             parser.output(false);
+
+            ErrorList.output();
+
         }
         catch (IOException e) {
             e.printStackTrace();
