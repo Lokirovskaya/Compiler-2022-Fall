@@ -20,7 +20,7 @@ public class Compiler {
 
             Parser parser = new Parser(tokenList);
             TreeNode root = parser.parse();
-            parser.output(true,false);
+            parser.output(false);
         }
         catch (IOException e) {
             e.printStackTrace();

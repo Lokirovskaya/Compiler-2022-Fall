@@ -17,13 +17,14 @@ public class Parser implements ParserUtil {
 
     public TreeNode parse() {
         COMPILE_UNIT();
+        treeBuilder.transformToLeftRecursive();
         result = treeBuilder.getRoot();
         System.out.println("Parser Done!");
         return result;
     }
 
-    public void output(boolean transformToLeftRecursive, boolean outputFullTree) {
-        new ResultOutput().output(result, transformToLeftRecursive, outputFullTree);
+    public void output(boolean outputFullTree) {
+        new ResultOutput().output(result, outputFullTree);
     }
 
     private void COMPILE_UNIT() {
