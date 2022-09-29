@@ -12,25 +12,18 @@ import java.util.Map;
 import static parser.Nonterminal.NonterminalType.*;
 
 class ResultOutput {
-    private boolean outputFullTree;
-    private final StringBuilder sb = new StringBuilder();
+    private static final StringBuilder sb = new StringBuilder();
+    private static boolean outputFullTree;
 
-    public void output(TreeNode root, boolean outputFullTree) {
-        this.outputFullTree = outputFullTree;
-
+    static void output(String filename, TreeNode root, boolean outputFullTree) throws IOException {
+        ResultOutput.outputFullTree = outputFullTree;
         run(root, 0);
-
         String str = sb.toString();
-        try {
-            Files.write(Paths.get("output.txt"), str.getBytes(StandardCharsets.UTF_8));
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+        Files.write(Paths.get(filename), str.getBytes(StandardCharsets.UTF_8));
     }
 
     // 前序遍历一棵树，和递归下降顺序相同
-    private void run(TreeNode p, int layer) {
+    private static void run(TreeNode p, int layer) {
         printNodeStart(p, layer);
         if (p instanceof Nonterminal) {
             for (TreeNode next : ((Nonterminal) p).children) {
@@ -40,7 +33,7 @@ class ResultOutput {
         printNodeEnd(p, layer);
     }
 
-    private void printNodeStart(TreeNode node, int layer) {
+    private static void printNodeStart(TreeNode node, int layer) {
         if (outputFullTree) {
             for (int i = 0; i < layer; i++) sb.append("  ");
             if (node instanceof Token)
@@ -54,7 +47,7 @@ class ResultOutput {
         }
     }
 
-    private void printNodeEnd(TreeNode node, int layer) {
+    private static void printNodeEnd(TreeNode node, int layer) {
         if (node instanceof Nonterminal) {
             if (outputFullTree) {
                 for (int i = 0; i < layer; i++) sb.append("  ");

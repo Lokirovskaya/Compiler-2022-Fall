@@ -1,12 +1,13 @@
 package parser;
 
+import error.ErrorList;
 import lexer.Token;
 
-import java.util.Arrays;
+import java.io.IOException;
 import java.util.List;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
+import static error.Error.ErrorType.*;
 import static lexer.Token.TokenType.*;
 import static parser.Nonterminal.NonterminalType.*;
 
@@ -27,8 +28,8 @@ public class Parser {
         return result;
     }
 
-    public void output(boolean outputFullTree) {
-        new ResultOutput().output(result, outputFullTree);
+    public void output(String filename, boolean outputFullTree) throws IOException {
+        ResultOutput.output(filename, result, outputFullTree);
     }
 
     // Parsing Begin! //
@@ -479,21 +480,33 @@ public class Parser {
     // Parsing Utils //
 
     // 消耗当前 token，判断当前 token 是否和指定类型匹配，不匹配则报错
-    void consume(Token.TokenType judge) {
+    private void consume(Token.TokenType judge) {
         Token token = tokenReader.readToken();
+        boolean isNext = false;
         if (token.type == judge) {
             treeBuilder.addNode(token);
+            tokenReader.next();
         }
         else {
-            System.err.printf("Unexpected token '%s' at line %d when parsing %s, expected %s\n",
-                    token.value, token.lineNumber,
-                    treeBuilder.getCurrent().type.name(), judge.name());
+            // 若进入这几个 Missing 分支，不要移动 tokenReader 指针，相当于补上了这些符号
+            if (judge == SEMICOLON) {
+                ErrorList.add(MISSING_SEMICOLON, token.lineNumber);
+            }
+            else if (judge == RIGHT_PAREN) {
+                ErrorList.add(MISSING_RIGHT_PAREN, token.lineNumber);
+            }
+            else if (judge == RIGHT_BRACKET) {
+                ErrorList.add(MISSING_RIGHT_BRACKET, token.lineNumber);
+            }
+            else {
+                System.err.printf("Unexpected token '%s' at line %d\n", token.value, token.lineNumber);
+                tokenReader.next();
+            }
         }
-        tokenReader.next();
     }
 
     // 也是消耗并判断当前 token，但是有多个匹配可能
-    void consume(Token.TokenType... judges) {
+    private  void consume(Token.TokenType... judges) {
         Token token = tokenReader.readToken();
         boolean match = false;
         for (Token.TokenType judge : judges) {
@@ -506,10 +519,7 @@ public class Parser {
             treeBuilder.addNode(token);
         }
         else {
-            System.err.printf("Unexpected token '%s' at line %d when parsing %s, expected %s\n",
-                    token.value, token.lineNumber,
-                    treeBuilder.getCurrent().type.name(),
-                    Arrays.stream(judges).map(Enum::name).collect(Collectors.toList()));
+            System.err.printf("Unexpected token '%s' at line %d\n", token.value, token.lineNumber);
         }
         tokenReader.next();
     }

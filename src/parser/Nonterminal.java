@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Nonterminal extends TreeNode {
-    NonterminalType type;
-    List<TreeNode> children = new ArrayList<>();
+   public NonterminalType type;
+   public List<TreeNode> children = new ArrayList<>();
 
     public enum NonterminalType {
         _COMPILE_UNIT_, _DECLARE_, _BASIC_TYPE_, _CONST_DECLARE_, _CONST_DEFINE_, _CONST_INIT_VALUE_,

@@ -11,24 +11,14 @@ import java.util.Map;
 import static lexer.Token.TokenType.*;
 
 class ResultOutput {
-    private final List<Token> result;
 
-    ResultOutput(List<Token> result) {
-        this.result = result;
-    }
-
-    void output() {
+    static void output(String filename, List<Token> result) throws IOException {
         StringBuilder sb = new StringBuilder();
         for (Token t : result) {
             sb.append(tokenToString(t)).append('\n');
         }
         String str = sb.toString();
-        try {
-            Files.write(Paths.get("output.txt"), str.getBytes(StandardCharsets.UTF_8));
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+        Files.write(Paths.get(filename), str.getBytes(StandardCharsets.UTF_8));
     }
 
     static String tokenToString(Token token) {

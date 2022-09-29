@@ -1,5 +1,6 @@
 package lexer;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -20,8 +21,8 @@ public class Lexer {
         return result;
     }
 
-    public void output() {
-        new ResultOutput(result).output();
+    public void output(String filename) throws IOException {
+        ResultOutput.output(filename, result);
     }
 
     private final String regex = "[a-zA-Z_][a-zA-Z0-9_]*|" + // identifier or keywords
