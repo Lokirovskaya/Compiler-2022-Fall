@@ -1,4 +1,4 @@
-package error;
+package symbol;
 
 public class Error {
     ErrorType type;

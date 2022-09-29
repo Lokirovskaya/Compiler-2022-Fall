@@ -5,5 +5,6 @@ import java.util.Map;
 
 public class Table {
     Map<String, Symbol> table = new HashMap<>();
-    int parentIndex;
+    Table parent;
+    int id;
 }

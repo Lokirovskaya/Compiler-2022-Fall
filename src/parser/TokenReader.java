@@ -20,6 +20,10 @@ class TokenReader {
         return tokenList.get(i);
     }
 
+    Token readPrevToken() {
+        return tokenList.get(i - 1);
+    }
+
     Token.TokenType read(int offset) {
         if (i + offset < 0 || i + offset >= tokenList.size())
             return Token.TokenType.NULL;

@@ -9,9 +9,8 @@ import java.util.List;
 class ResultOutput {
     static void output(String filename, List<Table> tableList) throws IOException {
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < tableList.size(); i++) {
-            Table table = tableList.get(i);
-            sb.append(String.format("Table %d, parent %d\n", i, table.parentIndex));
+        for (Table table : tableList) {
+            sb.append(String.format("Table %d, parent %d\n", table.id, table.parent == null ? -1 : table.parent.id));
             for (Symbol symbol : table.table.values()) {
                 if (symbol instanceof Symbol.Var) {
                     sb.append(String.format("    VAR %s line:%d dim:%d const:%s (%s)\n", symbol.name, symbol.lineNumber, ((Symbol.Var) symbol).dimension, ((Symbol.Var) symbol).isConst, symbol));

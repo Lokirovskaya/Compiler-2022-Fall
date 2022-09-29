@@ -1,4 +1,4 @@
-import error.ErrorList;
+import symbol.ErrorList;
 import lexer.Lexer;
 import lexer.Token;
 import parser.Parser;

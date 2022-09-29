@@ -1,6 +1,4 @@
-package error;
-
-import lexer.Token;
+package symbol;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -11,7 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static error.Error.ErrorType.*;
+import static symbol.Error.ErrorType.*;
 
 public class ErrorList {
     private static final List<Error> errorList = new ArrayList<>();
