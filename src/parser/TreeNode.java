@@ -5,13 +5,13 @@ import lexer.Token;
 public abstract class TreeNode {
     public Nonterminal parent;
 
-    public boolean isType(Token.TokenType type) {
+    public boolean isType(Token.TokenType t) {
         if (this instanceof Nonterminal) return false;
-        else return ((Token) this).type == type;
+        else return ((Token) this).type == t;
     }
 
-    public boolean isType(Nonterminal.NonterminalType type) {
+    public boolean isType(Nonterminal.NonterminalType t) {
         if (this instanceof Token) return false;
-        else return ((Nonterminal) this).type == type;
+        else return ((Nonterminal) this).type == t;
     }
 }

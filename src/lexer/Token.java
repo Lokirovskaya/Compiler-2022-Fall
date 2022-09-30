@@ -7,6 +7,11 @@ public class Token extends TreeNode {
     public int lineNumber;
     public TokenType type;
 
+    @Override
+    public boolean isType(Token.TokenType t) {
+        return this.type == t;
+    }
+
     public enum TokenType {
         NULL,
         IDENTIFIER, INT_CONST, STRING_CONST,

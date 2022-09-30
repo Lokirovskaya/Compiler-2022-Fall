@@ -4,11 +4,12 @@ import lexer.Token;
 import parser.Nonterminal;
 import parser.TreeNode;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import static symbol.Error.ErrorType.*;
 import static lexer.Token.TokenType.*;
 import static parser.Nonterminal.NonterminalType.*;
+import static symbol.Error.ErrorType.*;
 
 // 提供一些建符号表和错误处理的实用程序类
 class TableUtil {
@@ -16,18 +17,18 @@ class TableUtil {
     // ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal
     // FuncFParam → BType Ident ['[' ']' { '[' ConstExp ']' }]
     static Symbol.Var readVarDefine(Nonterminal varDefine) {
-        assert varDefine.type == _VAR_DEFINE_ || varDefine.type == _CONST_DEFINE_ || varDefine.type == _FUNCTION_DEFINE_PARAM_;
+        assert varDefine.isType(_VAR_DEFINE_) || varDefine.isType(_CONST_DEFINE_) || varDefine.isType(_FUNCTION_DEFINE_PARAM_);
         List<TreeNode> nodes = varDefine.children;
         Symbol.Var var = new Symbol.Var();
 
         int identStart;
-        if (varDefine.type == _VAR_DEFINE_ || varDefine.type == _CONST_DEFINE_)
+        if (varDefine.isType(_VAR_DEFINE_) || varDefine.isType(_CONST_DEFINE_))
             identStart = 0;
         else identStart = 1;
 
         var.name = ((Token) nodes.get(identStart)).value;
         var.lineNumber = ((Token) nodes.get(identStart)).lineNumber;
-        var.isConst = (varDefine.type == _CONST_DEFINE_);
+        var.isConst = (varDefine.isType(_CONST_DEFINE_));
 
         // 一直读到结束，有几个终结符 '['
         int bracketCount = 0;
@@ -43,13 +44,13 @@ class TableUtil {
     // FuncDef → FuncType Ident '(' [FuncFParams] ')' Block
     // MainFuncDef → 'int' 'main' '(' ')' Block
     static Symbol.Function readFunctionDefine(Nonterminal funcDef) {
-        assert funcDef.type == _FUNCTION_DEFINE_ || funcDef.type == _MAIN_FUNCTION_DEFINE_;
+        assert funcDef.isType(_FUNCTION_DEFINE_) || funcDef.isType(_MAIN_FUNCTION_DEFINE_);
         List<TreeNode> nodes = funcDef.children;
         Symbol.Function function = new Symbol.Function();
 
-        if (funcDef.type == _FUNCTION_DEFINE_) {
+        if (funcDef.isType(_FUNCTION_DEFINE_)) {
             Nonterminal funcType = (Nonterminal) nodes.get(0);
-            function.isVoid = (((Token) funcType.children.get(0)).type == VOID);
+            function.isVoid = funcType.children.get(0).isType(VOID);
             function.name = ((Token) nodes.get(1)).value;
             function.lineNumber = ((Token) nodes.get(1)).lineNumber;
         }
@@ -61,7 +62,7 @@ class TableUtil {
         return function;
     }
 
-    static Symbol findSymbol(String name, Table currentTable) {
+    private static Symbol findSymbol(String name, Table currentTable) {
         Table t = currentTable;
         while (t != null) {
             if (t.table.containsKey(name)) return t.table.get(name);
@@ -72,7 +73,7 @@ class TableUtil {
 
     // LVal → Ident {'[' Exp ']'}
     static void checkUndefineVar(Nonterminal identUse, Table currentTable) {
-        assert identUse.type == _LEFT_VALUE_;
+        assert identUse.isType(_LEFT_VALUE_);
         Token identifier = (Token) identUse.children.get(0);
         Symbol symbol = findSymbol(identifier.value, currentTable);
         if (symbol == null || symbol instanceof Symbol.Function) {
@@ -81,38 +82,107 @@ class TableUtil {
     }
 
     // UnaryExp → Ident '(' [FuncRParams] ')' | ...
-    // 这里不检查参数类型是否匹配
-    static void checkFunctionCall(Nonterminal functionCall, Table rootTable) {
-        assert functionCall.type == _UNARY_EXPRESSION_;
+    static void checkFunctionCall(Nonterminal functionCall, Table rootTable, Table currentTable) {
+        assert functionCall.isType(_UNARY_EXPRESSION_);
         Token identifier = (Token) functionCall.children.get(0);
 
-        Symbol symbol = findSymbol(identifier.value, rootTable);
-        if (symbol == null || symbol instanceof Symbol.Var) {
+        // 函数是否定义
+        Symbol function = findSymbol(identifier.value, rootTable);
+        if (function == null || function instanceof Symbol.Var) {
             ErrorList.add(IDENTIFIER_UNDEFINE, identifier.lineNumber);
             return;
         }
 
         // FuncRParams → Exp { ',' Exp }
-        int paramCount = 0;
-        if (functionCall.children.get(2) instanceof Nonterminal) {
+        List<Nonterminal> paramList = new ArrayList<>();
+        if (functionCall.children.get(2).isType(_FUNCTION_CALL_PARAM_LIST_)) {
             Nonterminal paramListNode = (Nonterminal) functionCall.children.get(2);
             for (TreeNode t : paramListNode.children) {
                 if (t.isType(_EXPRESSION_)) {
-                    paramCount++;
+                    paramList.add((Nonterminal) t);
                 }
             }
         }
 
-        if (paramCount != ((Symbol.Function) symbol).params.size()) {
+        // 函数参数数目是否匹配
+        if (paramList.size() != ((Symbol.Function) function).params.size()) {
             ErrorList.add(PARAM_COUNT_UNMATCH, identifier.lineNumber);
+        }
+        // 函数参数类型是否匹配
+        for (int i = 0, paramListSize = paramList.size(); i < paramListSize; i++) {
+            TreeNode t = paramList.get(i);
+            int rightValueDimension = getRightValueDimension(t, currentTable);
+            if (rightValueDimension < 0) return;
+            int declareDimension = ((Symbol.Function) function).params.get(i).dimension;
+            if (rightValueDimension != declareDimension) {
+                ErrorList.add(PARAM_TYPE_UNMATCH, identifier.lineNumber);
+            }
         }
     }
 
+    // 前序遍历找到第一个 identifier 或 int const，再去查表，获得维数
+    // 返回 -1 说明出错
+    private static int getRightValueDimension(TreeNode exp, Table currentTable) {
+        assert exp.isType(_EXPRESSION_);
+        List<TreeNode> stack = new ArrayList<>();
+        stack.add(exp);
+        while (!stack.isEmpty()) {
+            TreeNode _t = stack.remove(stack.size() - 1);
+            if (_t instanceof Token) continue;
+            Nonterminal t = (Nonterminal) _t;
+            // UnaryExp → Ident '(' [FuncRParams] ')' | ...
+            // LVal → Ident {'[' Exp ']'}
+            // Number → IntConst
+            if (t.isType(_UNARY_EXPRESSION_)) {
+                if (t.children.get(0).isType(IDENTIFIER))
+                    return 0;
+            }
+            else if (t.isType(_LEFT_VALUE_)) {
+                Token identifier = (Token) t.children.get(0);
+                int leftBracketCount = 0;
+                for (TreeNode node : t.children) {
+                    if (node.isType(LEFT_BRACKET)) leftBracketCount++;
+                }
+                Symbol var = findSymbol(identifier.value, currentTable);
+                if (var == null || var instanceof Symbol.Function)
+                    return -1;
+                int declareDimension = ((Symbol.Var) var).dimension;
+                return declareDimension - leftBracketCount;
+            }
+            else if (t.isType(_NUMBER_)) {
+                return 0;
+            }
+
+            for (int i = t.children.size() - 1; i >= 0; i--) {
+                stack.add(t.children.get(i));
+            }
+        }
+        return -1;
+    }
+
+    static void checkLeftValueConst(Nonterminal statement, Table currentTable) {
+        assert statement.isType(_STATEMENT_);
+        Nonterminal leftValue = (Nonterminal) statement.children.get(0);
+        Token identifier = (Token) leftValue.children.get(0);
+        Symbol var = findSymbol(identifier.value, currentTable);
+        if (var == null || var instanceof Symbol.Function) return;
+        if (((Symbol.Var) var).isConst) ErrorList.add(CHANGE_CONST, identifier.lineNumber);
+    }
+
+    static void checkReturnOfFunction(Nonterminal statement, boolean isVoid) {
+        assert statement.isType(_STATEMENT_);
+        // 'return' [Exp] ';'
+        boolean hasExpression = statement.children.get(1).isType(_EXPRESSION_);
+        boolean error = isVoid && hasExpression || !isVoid && !hasExpression;
+        int returnLineNumber = ((Token) statement.children.get(0)).lineNumber;
+        if (error) ErrorList.add(RETURN_EXPRESSION_WHEN_VOID, returnLineNumber);
+    }
+
     // int 类型的函数，最后一条语句必须是 return Exp;
-    static void checkReturnOfIntFunction(Nonterminal funcDef) {
+    static void checkFinalReturnOfIntFunction(Nonterminal funcDef) {
         // FuncDef → FuncType Ident '(' [FuncFParams] ')' Block
         // MainFuncDef → 'int' 'main' '(' ')' Block
-        assert funcDef.type == _FUNCTION_DEFINE_ || funcDef.type == _MAIN_FUNCTION_DEFINE_;
+        assert funcDef.isType(_FUNCTION_DEFINE_) || funcDef.isType(_MAIN_FUNCTION_DEFINE_);
         Nonterminal block = (Nonterminal) funcDef.children.get(funcDef.children.size() - 1);
         // Block → '{' { BlockItem } '}'
         // BlockItem → Decl | Stmt
@@ -131,11 +201,9 @@ class TableUtil {
         }
     }
 
-    // 符号表无关的错误检查 //
-
     // Stmt → 'printf' '(' FormatString { ',' Exp } ')' ';'
     static void checkFormatString(Nonterminal statement) {
-        assert statement.type == _STATEMENT_;
+        assert statement.isType(_STATEMENT_);
         List<TreeNode> nodes = statement.children;
         String format = ((Token) nodes.get(2)).value;
         int formatStringLineNumber = ((Token) nodes.get(2)).lineNumber;
@@ -168,8 +236,8 @@ class TableUtil {
         int printfLineNumber = ((Token) nodes.get(0)).lineNumber;
         int formatParamCount = 0;
         int i = 3;
-        while (((Token) nodes.get(i)).type == COMMA) {
-            assert ((Nonterminal) nodes.get(i + 1)).type == _EXPRESSION_;
+        while (nodes.get(i).isType(COMMA)) {
+            assert nodes.get(i + 1).isType(_EXPRESSION_);
             formatParamCount++;
             i += 2;
         }

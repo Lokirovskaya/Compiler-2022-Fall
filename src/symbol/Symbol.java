@@ -15,6 +15,6 @@ public abstract class Symbol {
 
     public static class Function extends Symbol {
         boolean isVoid;
-        List<Symbol> params = new ArrayList<>();
+        List<Symbol.Var> params = new ArrayList<>();
     }
 }

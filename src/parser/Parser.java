@@ -482,12 +482,12 @@ public class Parser {
     // 消耗当前 token，判断当前 token 是否和指定类型匹配，不匹配则报错
     private void consume(Token.TokenType judge) {
         Token token = tokenReader.readToken();
-        if (token.type == judge) {
+        if (token.isType(judge)) {
             treeBuilder.addNode(token);
             tokenReader.next();
         }
         else {
-            // 若进入这几个 Missing 分支，不要移动 tokenReader 指针，相当于补上了这些符号
+            // 若进入这几个 Missing 分支，不要移动 tokenReader 指针，并补上这些符号
             if (judge == SEMICOLON) {
                 ErrorList.add(MISSING_SEMICOLON, tokenReader.readPrevToken().lineNumber);
             }
@@ -509,7 +509,7 @@ public class Parser {
         Token token = tokenReader.readToken();
         boolean match = false;
         for (Token.TokenType judge : judges) {
-            if (token.type == judge) {
+            if (token.isType(judge)) {
                 match = true;
                 break;
             }
@@ -524,7 +524,7 @@ public class Parser {
     }
 
     // 创建一个非终结符号，作为当前节点的子节点，并将树的指针指向它
-    void createNonterminal(Nonterminal.NonterminalType type) {
+    private void createNonterminal(Nonterminal.NonterminalType type) {
         Nonterminal node = new Nonterminal();
         node.type = type;
         treeBuilder.addNode(node);
@@ -532,7 +532,7 @@ public class Parser {
     }
 
     // 结束当前非终结符号的解析，将树的指针重新指向父元素
-    void endNonterminal() {
+    private void endNonterminal() {
         treeBuilder.moveUp();
     }
 }

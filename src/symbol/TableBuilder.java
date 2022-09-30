@@ -1,5 +1,6 @@
 package symbol;
 
+import lexer.Token;
 import parser.Nonterminal;
 import parser.TreeNode;
 
@@ -9,6 +10,7 @@ import java.util.List;
 
 import static lexer.Token.TokenType.*;
 import static parser.Nonterminal.NonterminalType.*;
+import static symbol.Error.ErrorType.*;
 
 public class TableBuilder {
     // table 树的所有节点
@@ -33,28 +35,32 @@ public class TableBuilder {
     }
 
     // FuncDef → FuncType Ident '(' [FuncFParams] ')' Block
-    // 请将多个 FuncFParam 加入此 function 的 params 中
-    // 当它不为 null 时，阻止一次 Block 创建新符号表
-    private Symbol.Function currentFunctionSymbol = null;
+    // 将多个 FuncFParam 加入此 function 的 params 中
+    // 阻止上述的 Block 创建新符号表
+    private Symbol.Function currentFunction;
+    private boolean skipCreateTableOnce = false;
+
+    // while 块的深度，为 0 说明不在 while 块中
+    private int loopDepth = 0;
 
     private void runSyntaxTree(TreeNode _p) {
         if (_p instanceof Nonterminal) {
             Nonterminal p = (Nonterminal) _p;
-            TreeNode firstChild = p.children.get(0);
             switch (p.type) {
                 // 建符号表
                 case _BLOCK_:
-                    if (currentFunctionSymbol == null)
+                    if (skipCreateTableOnce)
                         createTable();
-                    currentFunctionSymbol = null;
+                    skipCreateTableOnce = false;
                     break;
                 case _FUNCTION_DEFINE_:
                 case _MAIN_FUNCTION_DEFINE_:
-                    currentFunctionSymbol = TableUtil.readFunctionDefine(p);
-                    addSymbol(currentFunctionSymbol);
+                    currentFunction = TableUtil.readFunctionDefine(p);
+                    skipCreateTableOnce = true;
+                    addSymbol(currentFunction);
                     createTable();
-                    if (!currentFunctionSymbol.isVoid) {
-                        TableUtil.checkReturnOfIntFunction(p);
+                    if (!currentFunction.isVoid) {
+                        TableUtil.checkFinalReturnOfIntFunction(p);
                     }
                     break;
                 case _VAR_DEFINE_:
@@ -63,17 +69,32 @@ public class TableBuilder {
                     addSymbol(var);
                     break;
                 case _FUNCTION_DEFINE_PARAM_:
-                    assert currentFunctionSymbol != null;
+                    assert currentFunction != null;
                     Symbol.Var param = TableUtil.readVarDefine(p);
-                    currentFunctionSymbol.params.add(param);
+                    currentFunction.params.add(param);
                     addSymbol(param);
                     break;
 
                 // 错误处理
                 case _STATEMENT_:
-                    // printf
+                    TreeNode firstChild = p.children.get(0);
                     if (firstChild.isType(PRINTF)) {
                         TableUtil.checkFormatString(p);
+                    }
+                    else if (firstChild.isType(RETURN)) {
+                        if (currentFunction != null) {
+                            TableUtil.checkReturnOfFunction(p, currentFunction.isVoid);
+                        }
+                    }
+                    // 赋值语句
+                    else if (firstChild.isType(_LEFT_VALUE_)) {
+                        TableUtil.checkLeftValueConst(p, current);
+                    }
+                    else if (firstChild.isType(WHILE)) {
+                        loopDepth++;
+                    }
+                    else if (firstChild.isType(BREAK) || firstChild.isType(CONTINUE)) {
+                        if (loopDepth == 0) ErrorList.add(ILLEGAL_BREAK_CONTINUE, ((Token) firstChild).lineNumber);
                     }
                     break;
                 case _LEFT_VALUE_:
@@ -81,8 +102,8 @@ public class TableBuilder {
                     break;
                 case _UNARY_EXPRESSION_:
                     // function call
-                    if (firstChild.isType(IDENTIFIER)) {
-                        TableUtil.checkFunctionCall(p, root);
+                    if (p.children.get(0).isType(IDENTIFIER)) {
+                        TableUtil.checkFunctionCall(p, root, current);
                     }
                     break;
             }
@@ -92,7 +113,12 @@ public class TableBuilder {
             }
 
             // exit
-            if (p.type == _BLOCK_) moveUp();
+            if (p.isType(_BLOCK_)) {
+                moveUp();
+            }
+            else if (p.isType(_FUNCTION_DEFINE_) || p.isType(_MAIN_FUNCTION_DEFINE_)) {
+                currentFunction = null;
+            }
         }
     }
 
@@ -115,6 +141,6 @@ public class TableBuilder {
         if (!current.table.containsKey(symbol.name))
             current.table.put(symbol.name, symbol);
         else
-            ErrorList.add(Error.ErrorType.IDENTIFIER_DUPLICATE, symbol.lineNumber);
+            ErrorList.add(IDENTIFIER_DUPLICATE, symbol.lineNumber);
     }
 }

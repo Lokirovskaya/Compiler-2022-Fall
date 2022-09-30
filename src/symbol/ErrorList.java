@@ -21,7 +21,7 @@ public class ErrorList {
     public static void output(String filename) throws IOException {
         StringBuilder sb = new StringBuilder();
         for (Error e : errorList) {
-            sb.append(String.format("%c %d\n", mapErrorIndex.get(e.type), e.lineNumber));
+            sb.append(String.format("%d %c\n", e.lineNumber, mapErrorIndex.get(e.type)));
         }
         String str = sb.toString();
         Files.write(Paths.get(filename), str.getBytes(StandardCharsets.UTF_8));
