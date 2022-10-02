@@ -5,6 +5,7 @@ import lexer.Token;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static symbol.Error.ErrorType.*;
@@ -24,7 +25,6 @@ public class Parser {
         COMPILE_UNIT();
         treeBuilder.transformToLeftRecursive();
         result = treeBuilder.getRoot();
-        System.out.println("Parser Done!");
         return result;
     }
 
@@ -164,7 +164,7 @@ public class Parser {
         consume(IDENTIFIER);
         consume(LEFT_PAREN);
         // is not '()' ?
-        if (tokenReader.read() != RIGHT_PAREN)
+        if (tokenReader.read() == INT)
             FUNCTION_DEFINE_PARAM_LIST();
         consume(RIGHT_PAREN);
         BLOCK();
@@ -368,10 +368,12 @@ public class Parser {
     private void UNARY_EXPRESSION() {
         createNonterminal(_UNARY_EXPRESSION_);
         // Ident '(' [FuncRParams] ')'
+        Function<Token.TokenType, Boolean> isFirstTokenOfExpression =
+                (type) -> type == IDENTIFIER || type == PLUS || type == MINUS || type == NOT || type == LEFT_PAREN || type == INT_CONST;
         if (tokenReader.read() == IDENTIFIER && tokenReader.read(1) == LEFT_PAREN) {
             consume(IDENTIFIER);
             consume(LEFT_PAREN);
-            if (tokenReader.read() != RIGHT_PAREN) {
+            if (isFirstTokenOfExpression.apply(tokenReader.read())) {
                 FUNCTION_CALL_PARAM_LIST();
             }
             consume(RIGHT_PAREN);
@@ -490,15 +492,18 @@ public class Parser {
             // 若进入这几个 Missing 分支，不要移动 tokenReader 指针，并补上这些符号
             if (judge == SEMICOLON) {
                 ErrorList.add(MISSING_SEMICOLON, tokenReader.readPrevToken().lineNumber);
+                treeBuilder.addNode(new Token("missing ;", SEMICOLON, tokenReader.readPrevToken().lineNumber));
             }
             else if (judge == RIGHT_PAREN) {
                 ErrorList.add(MISSING_RIGHT_PAREN, tokenReader.readPrevToken().lineNumber);
+                treeBuilder.addNode(new Token("missing )", RIGHT_PAREN, tokenReader.readPrevToken().lineNumber));
             }
             else if (judge == RIGHT_BRACKET) {
                 ErrorList.add(MISSING_RIGHT_BRACKET, tokenReader.readPrevToken().lineNumber);
+                treeBuilder.addNode(new Token("missing }", RIGHT_BRACKET, tokenReader.readPrevToken().lineNumber));
             }
             else {
-                System.err.printf("Unexpected token '%s' at line %d\n", token.value, token.lineNumber);
+                System.err.printf("Unexpected token '%s' at line %d, expect %s\n", token.value, token.lineNumber, judge.name());
                 tokenReader.next();
             }
         }
@@ -518,15 +523,14 @@ public class Parser {
             treeBuilder.addNode(token);
         }
         else {
-            System.err.printf("Unexpected token '%s' at line %d\n", token.value, token.lineNumber);
+            System.err.printf("Unexpected token '%s' at line %d, expect %s and others\n", token.value, token.lineNumber, judges[0].name());
         }
         tokenReader.next();
     }
 
     // 创建一个非终结符号，作为当前节点的子节点，并将树的指针指向它
     private void createNonterminal(Nonterminal.NonterminalType type) {
-        Nonterminal node = new Nonterminal();
-        node.type = type;
+        Nonterminal node = new Nonterminal(type);
         treeBuilder.addNode(node);
         treeBuilder.moveTo(node);
     }

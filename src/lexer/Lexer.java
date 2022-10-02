@@ -17,7 +17,6 @@ public class Lexer {
     public List<Token> getTokens() {
         List<String> tokenStrings = getTokenStrings(code);
         result = processTokenStrings(tokenStrings);
-        System.out.println("Lexer Done!");
         return result;
     }
 
@@ -58,10 +57,7 @@ public class Lexer {
                 continue;
             }
 
-            Token token = new Token();
-            token.value = s;
-            token.lineNumber = lineNumber;
-            token.type = TokenClassify.getTokenType(s);
+            Token token = new Token(s, TokenClassify.getTokenType(s), lineNumber);
             tokens.add(token);
         }
         return tokens;

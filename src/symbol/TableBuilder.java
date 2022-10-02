@@ -49,16 +49,16 @@ public class TableBuilder {
             switch (p.type) {
                 // 建符号表
                 case _BLOCK_:
-                    if (skipCreateTableOnce)
+                    if (!skipCreateTableOnce)
                         createTable();
                     skipCreateTableOnce = false;
                     break;
                 case _FUNCTION_DEFINE_:
                 case _MAIN_FUNCTION_DEFINE_:
                     currentFunction = TableUtil.readFunctionDefine(p);
-                    skipCreateTableOnce = true;
                     addSymbol(currentFunction);
                     createTable();
+                    skipCreateTableOnce = true;
                     if (!currentFunction.isVoid) {
                         TableUtil.checkFinalReturnOfIntFunction(p);
                     }
@@ -118,6 +118,9 @@ public class TableBuilder {
             }
             else if (p.isType(_FUNCTION_DEFINE_) || p.isType(_MAIN_FUNCTION_DEFINE_)) {
                 currentFunction = null;
+            }
+            else if (p.isType(_STATEMENT_) && p.children.get(0).isType(WHILE)) {
+                loopDepth--;
             }
         }
     }

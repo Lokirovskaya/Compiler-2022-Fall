@@ -7,6 +7,10 @@ public class Nonterminal extends TreeNode {
     public NonterminalType type;
     public List<TreeNode> children = new ArrayList<>();
 
+    public Nonterminal(NonterminalType type) {
+        this.type = type;
+    }
+
     @Override
     public boolean isType(NonterminalType t) {
         return this.type == t;

@@ -60,8 +60,7 @@ class TreeBuilder {
                         assert size % 2 == 1;
                         Nonterminal R = (Nonterminal) L.children.get(0);
                         List<TreeNode> OR = new ArrayList<>(L.children.subList(size - 2, size));
-                        Nonterminal L_ = new Nonterminal();
-                        L_.type = L.type;
+                        Nonterminal L_ = new Nonterminal(L.type);
                         L_.children.add(R); // L'.left = R
                         L_.children.addAll(L.children.subList(1, size - 2)); // L'.right = {OR}'
                         L.children = new ArrayList<>();

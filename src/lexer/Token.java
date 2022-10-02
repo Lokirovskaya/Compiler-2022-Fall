@@ -7,6 +7,12 @@ public class Token extends TreeNode {
     public int lineNumber;
     public TokenType type;
 
+    public Token(String value,  TokenType type, int lineNumber) {
+        this.value = value;
+        this.type = type;
+        this.lineNumber = lineNumber;
+    }
+
     @Override
     public boolean isType(Token.TokenType t) {
         return this.type == t;

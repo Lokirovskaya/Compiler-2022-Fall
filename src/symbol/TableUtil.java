@@ -107,21 +107,26 @@ class TableUtil {
         // 函数参数数目是否匹配
         if (paramList.size() != ((Symbol.Function) function).params.size()) {
             ErrorList.add(PARAM_COUNT_UNMATCH, identifier.lineNumber);
+            return;
         }
         // 函数参数类型是否匹配
         for (int i = 0, paramListSize = paramList.size(); i < paramListSize; i++) {
-            TreeNode t = paramList.get(i);
-            int rightValueDimension = getRightValueDimension(t, currentTable);
-            if (rightValueDimension < 0) return;
-            int declareDimension = ((Symbol.Function) function).params.get(i).dimension;
-            if (rightValueDimension != declareDimension) {
+            TreeNode param = paramList.get(i);
+            int rightValueDimension = getRightValueDimension(param, currentTable);
+            if (rightValueDimension == -1) {
                 ErrorList.add(PARAM_TYPE_UNMATCH, identifier.lineNumber);
+            }
+            else if (rightValueDimension >= 0) {
+                int declareDimension = ((Symbol.Function) function).params.get(i).dimension;
+                if (rightValueDimension != declareDimension) {
+                    ErrorList.add(PARAM_TYPE_UNMATCH, identifier.lineNumber);
+                }
             }
         }
     }
 
     // 前序遍历找到第一个 identifier 或 int const，再去查表，获得维数
-    // 返回 -1 说明出错
+    // 返回 -1 表明右值不合法（比如调用 void 函数，取地址超限等），-2 表示标识符未定义等异常
     private static int getRightValueDimension(TreeNode exp, Table currentTable) {
         assert exp.isType(_EXPRESSION_);
         List<TreeNode> stack = new ArrayList<>();
@@ -134,8 +139,15 @@ class TableUtil {
             // LVal → Ident {'[' Exp ']'}
             // Number → IntConst
             if (t.isType(_UNARY_EXPRESSION_)) {
-                if (t.children.get(0).isType(IDENTIFIER))
+                TreeNode identifier = t.children.get(0);
+                if (identifier.isType(IDENTIFIER)) {
+                    Symbol function = findSymbol(((Token) identifier).value, currentTable);
+                    if (function == null || function instanceof Symbol.Var)
+                        return -2;
+                    if (((Symbol.Function) function).isVoid)
+                        return -1;
                     return 0;
+                }
             }
             else if (t.isType(_LEFT_VALUE_)) {
                 Token identifier = (Token) t.children.get(0);
@@ -145,8 +157,10 @@ class TableUtil {
                 }
                 Symbol var = findSymbol(identifier.value, currentTable);
                 if (var == null || var instanceof Symbol.Function)
-                    return -1;
+                    return -2;
                 int declareDimension = ((Symbol.Var) var).dimension;
+                if (leftBracketCount > declareDimension)
+                    return -1;
                 return declareDimension - leftBracketCount;
             }
             else if (t.isType(_NUMBER_)) {
@@ -157,7 +171,7 @@ class TableUtil {
                 stack.add(t.children.get(i));
             }
         }
-        return -1;
+        return -2;
     }
 
     static void checkLeftValueConst(Nonterminal statement, Table currentTable) {
@@ -173,12 +187,12 @@ class TableUtil {
         assert statement.isType(_STATEMENT_);
         // 'return' [Exp] ';'
         boolean hasExpression = statement.children.get(1).isType(_EXPRESSION_);
-        boolean error = isVoid && hasExpression || !isVoid && !hasExpression;
+        boolean error = isVoid && hasExpression /* || !isVoid && !hasExpression */;
         int returnLineNumber = ((Token) statement.children.get(0)).lineNumber;
         if (error) ErrorList.add(RETURN_EXPRESSION_WHEN_VOID, returnLineNumber);
     }
 
-    // int 类型的函数，最后一条语句必须是 return Exp;
+    // 如果是 int 类型的函数，最后一条语句必须是 return Exp;
     static void checkFinalReturnOfIntFunction(Nonterminal funcDef) {
         // FuncDef → FuncType Ident '(' [FuncFParams] ')' Block
         // MainFuncDef → 'int' 'main' '(' ')' Block
@@ -206,42 +220,38 @@ class TableUtil {
         assert statement.isType(_STATEMENT_);
         List<TreeNode> nodes = statement.children;
         String format = ((Token) nodes.get(2)).value;
-        int formatStringLineNumber = ((Token) nodes.get(2)).lineNumber;
-        int formatCharCount = 0;
         // 合法普通字符中，不包括 " # $ % & '
-        // 跳过起始和结尾的 "
-        for (int i = 1; i < format.length() - 1; i++) {
+        int formatStringLineNumber = ((Token) nodes.get(2)).lineNumber;
+        Runnable charError = () -> ErrorList.add(ILLEGAL_CHAR, formatStringLineNumber);
+        for (int i = 1; i < format.length() - 1; i++) { // 跳过起始和结尾的 "
             char c = format.charAt(i);
             if (c == '%') {
-                if (format.charAt(i + 1) == 'd') {
-                    formatCharCount++;
-                }
-                else {
-                    ErrorList.add(ILLEGAL_CHAR, formatStringLineNumber);
-                    return;
+                if (format.charAt(i + 1) != 'd') {
+                    charError.run();
+                    break;
                 }
             }
             else if (c == '\\') {
                 if (format.charAt(i + 1) != 'n') {
-                    ErrorList.add(ILLEGAL_CHAR, formatStringLineNumber);
-                    return;
+                    charError.run();
+                    break;
                 }
             }
-            else if (!(c == 32 || c == 33 || 40 <= c && c <= 126)) {
-                ErrorList.add(ILLEGAL_CHAR, formatStringLineNumber);
-                return;
+            else if (!(c == 32 || c == 33 || (40 <= c && c <= 126))) {
+                charError.run();
+                break;
             }
         }
 
-        int printfLineNumber = ((Token) nodes.get(0)).lineNumber;
+        int formatCharCount = 0;
         int formatParamCount = 0;
-        int i = 3;
-        while (nodes.get(i).isType(COMMA)) {
-            assert nodes.get(i + 1).isType(_EXPRESSION_);
-            formatParamCount++;
-            i += 2;
+        int printfLineNumber = ((Token) nodes.get(0)).lineNumber;
+        for (int i = 1; i < format.length() - 1; i++) {
+            if (format.charAt(i) == '%' && format.charAt(i + 1) == 'd') formatCharCount++;
         }
-
+        for (TreeNode t : nodes) {
+            if (t.isType(COMMA)) formatParamCount++;
+        }
         if (formatCharCount != formatParamCount) {
             ErrorList.add(FORMAT_PARAM_COUNT_UNMATCH, printfLineNumber);
         }

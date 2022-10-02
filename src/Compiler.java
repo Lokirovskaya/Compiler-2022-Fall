@@ -22,11 +22,9 @@ public class Compiler {
         }
     }
 
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     static void compile(String code) throws IOException {
-        long start = System.currentTimeMillis();
-
         Lexer lexer = new Lexer(code);
         List<Token> tokenList = lexer.getTokens();
         if (DEBUG) lexer.output("output/lexer.txt");
@@ -41,11 +39,8 @@ public class Compiler {
         tableBuilder.build();
         if (DEBUG) tableBuilder.output("output/table.txt");
 
-        ErrorList.alert();
-//        ErrorList.output("output.txt");
+        if (DEBUG) ErrorList.alert();
+        ErrorList.output("error.txt");
         if (ErrorList.size() > 0) return;
-
-        long end = System.currentTimeMillis();
-        System.out.printf("Compile End! (%d ms)", end - start);
     }
 }

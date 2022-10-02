@@ -4,10 +4,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static symbol.Error.ErrorType.*;
 
@@ -20,6 +17,7 @@ public class ErrorList {
 
     public static void output(String filename) throws IOException {
         StringBuilder sb = new StringBuilder();
+        errorList.sort(Comparator.comparingInt(e -> e.lineNumber));
         for (Error e : errorList) {
             sb.append(String.format("%d %c\n", e.lineNumber, mapErrorIndex.get(e.type)));
         }
@@ -28,6 +26,7 @@ public class ErrorList {
     }
 
     public static void alert() {
+        errorList.sort(Comparator.comparingInt(e -> e.lineNumber));
         for (Error e : errorList) {
             System.err.printf("%s %d\n", e.type.name(), e.lineNumber);
         }
