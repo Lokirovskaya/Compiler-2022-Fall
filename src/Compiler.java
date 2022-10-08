@@ -1,27 +1,29 @@
 import error.ErrorList;
+import intercode.Generator;
 import intercode.InterCode;
-import intercode.InterCodeIO;
 import lexer.Lexer;
 import lexer.Token;
 import parser.Parser;
 import parser.TreeNode;
+import symbol.Symbol;
 import symbol.TableBuilder;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 
 public class Compiler {
     public static void main(String[] args) {
-//        try {
-//            String code = new String(Files.readAllBytes(Paths.get("testfile.txt")), StandardCharsets.UTF_8);
-//            compile(code);
-//        }
-//        catch (IOException e) {
-//            e.printStackTrace();
-//        }
-        InterCode intercode = InterCodeIO.input("inter.txt");
-        intercode.optimize();
-        InterCodeIO.output(intercode, "inter2.txt");
+        try {
+            String code = new String(Files.readAllBytes(Paths.get("testfile.txt")), StandardCharsets.UTF_8);
+            compile(code);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private static final boolean DEBUG = false;
@@ -38,10 +40,18 @@ public class Compiler {
         if (DEBUG) parser.output("output/parser.txt", true);
 
         TableBuilder tableBuilder = new TableBuilder(root);
+        Map<Token, Symbol> identSymbolMap = tableBuilder.build();
         if (DEBUG) tableBuilder.output("output/table.txt");
 
         if (DEBUG) ErrorList.alert();
-        ErrorList.output("error.txt");
+        // ErrorList.output("error.txt");
         if (ErrorList.size() > 0) return;
+
+        Generator generator = new Generator(root, identSymbolMap);
+        InterCode inter = generator.generate();
+
+        inter.output("inter.txt");
+        inter.optimize();
+        inter.output("inter_opt.txt");
     }
 }

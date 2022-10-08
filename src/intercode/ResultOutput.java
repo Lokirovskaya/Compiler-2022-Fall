@@ -4,39 +4,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
 
 import static intercode.Quaternion.OperatorType.*;
 
-public class InterCodeIO {
-    public static InterCode input(String filename) {
-        InterCode intercode = new InterCode();
-        try {
-            List<String> lines = Files.readAllLines(Paths.get(filename), StandardCharsets.UTF_8);
-            for (String line : lines) {
-                String[] tokens = line.split("\\s+");
-                Quaternion quater = new Quaternion();
-                Quaternion.OperatorType op = Quaternion.OperatorType.valueOf(tokens[0]);
-                quater.op = op;
-                if (op == ADD || op == SUB || op == MULT || op == DIV || op == MOD) {
-                    quater.target = (Operand.VirtualReg) StringToOperand(tokens[1]);
-                    quater.x1 = StringToOperand(tokens[2]);
-                    quater.x2 = StringToOperand(tokens[3]);
-                }
-                else if (op == SET) {
-                    quater.target = (Operand.VirtualReg) StringToOperand(tokens[1]);
-                    quater.x1 = StringToOperand(tokens[2]);
-                }
-                intercode.addQuaternion(quater);
-            }
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-        return intercode;
-    }
-
-    //
+class ResultOutput {
     public static void output(InterCode intercode, String filename) {
         StringBuilder sb = new StringBuilder();
         for (Quaternion q : intercode.list) {

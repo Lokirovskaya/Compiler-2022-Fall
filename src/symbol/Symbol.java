@@ -1,16 +1,21 @@
 package symbol;
 
+import intercode.Operand;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public abstract class Symbol {
-    String name;
-    int lineNumber;
+    public String name;
+    public int lineNumber;
+    public Table selfTable;
 
     public static class Var extends Symbol {
         public boolean isConst;
         public int dimension; // 普通变量为 0
-        List<Integer> capacity; // 在建立符号表时不填
+        // 中间代码生成时填
+        public Operand.VirtualReg reg;
+        public List<Operand.VirtualReg> capacity;
     }
 
     public static class Function extends Symbol {

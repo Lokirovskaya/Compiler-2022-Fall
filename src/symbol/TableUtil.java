@@ -1,6 +1,5 @@
 package symbol;
 
-import error.ErrorList;
 import lexer.Token;
 import parser.Nonterminal;
 import parser.TreeNode;
@@ -9,20 +8,11 @@ import java.util.List;
 
 import static lexer.Token.TokenType.*;
 import static parser.Nonterminal.NonterminalType.*;
-import static error.Error.ErrorType.*;
 
 // 提供一些建符号表和错误处理的实用程序类
 public class TableUtil {
-    // 向当前符号表添加符号
-    static void addSymbol(Symbol symbol, Table currentTable) {
-        if (!currentTable.table.containsKey(symbol.name))
-            currentTable.table.put(symbol.name, symbol);
-        else
-            ErrorList.add(IDENTIFIER_DUPLICATE, symbol.lineNumber);
-    }
-
     // 寻找名字对应的的符号
-    public static Symbol findSymbol(String name, Table currentTable) {
+    public static Symbol lookupSymbol(String name, Table currentTable) {
         Table t = currentTable;
         while (t != null) {
             if (t.table.containsKey(name)) return t.table.get(name);

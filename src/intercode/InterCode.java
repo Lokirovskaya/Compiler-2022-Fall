@@ -10,22 +10,26 @@ public class InterCode {
     private final Map<Integer, Integer> virtualRegMap = new HashMap<>();
     public final LinkedList<Quaternion> list = new LinkedList<>();
 
-    void addQuaternion(Quaternion quater) {
+    public void output(String filename) {
+        ResultOutput.output(this, filename);
+    }
+
+    void addQuater(Quaternion quater) {
         if (quater.target != null)
-            virtualRegMap.put(quater.target.reg, null);
+            virtualRegMap.putIfAbsent(quater.target.regID, null);
         if (quater.x1 instanceof VirtualReg)
-            virtualRegMap.put(((VirtualReg) quater.x1).reg, null);
+            virtualRegMap.putIfAbsent(((VirtualReg) quater.x1).regID, null);
         if (quater.x2 instanceof VirtualReg)
-            virtualRegMap.put(((VirtualReg) quater.x2).reg, null);
+            virtualRegMap.putIfAbsent(((VirtualReg) quater.x2).regID, null);
         list.addLast(quater);
     }
 
-    public Integer getRegValue(int regCode) {
-        return virtualRegMap.get(regCode);
+    public Integer getRegValue(int regID) {
+        return virtualRegMap.get(regID);
     }
 
-    public void setRegValue(int regCode, int value) {
-        virtualRegMap.replace(regCode, value);
+    public void setRegValue(int regID, int value) {
+        virtualRegMap.replace(regID, value);
     }
 
     public void optimize() {

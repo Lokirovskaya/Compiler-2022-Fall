@@ -19,10 +19,10 @@ public class ErrorUtil {
     public static void checkUndefineVar(Nonterminal identUse, Table currentTable) {
         // LVal → Ident {'[' Exp ']'}
         assert identUse.isType(_LEFT_VALUE_);
-        Token identifier = (Token) identUse.children.get(0);
-        Symbol symbol = TableUtil.findSymbol(identifier.value, currentTable);
+        Token ident = (Token) identUse.children.get(0);
+        Symbol symbol = TableUtil.lookupSymbol(ident.value, currentTable);
         if (symbol == null || symbol instanceof Symbol.Function) {
-            ErrorList.add(IDENTIFIER_UNDEFINE, identifier.lineNumber);
+            ErrorList.add(IDENTIFIER_UNDEFINE, ident.lineNumber);
         }
     }
 
@@ -30,12 +30,12 @@ public class ErrorUtil {
     public static void checkFunctionCall(Nonterminal functionCall, Table rootTable, Table currentTable) {
         // UnaryExp → Ident '(' [FuncRParams] ')' | ...
         assert functionCall.isType(_UNARY_EXPRESSION_);
-        Token identifier = (Token) functionCall.children.get(0);
+        Token ident = (Token) functionCall.children.get(0);
 
         // 函数是否定义
-        Symbol function = TableUtil.findSymbol(identifier.value, rootTable);
+        Symbol function = TableUtil.lookupSymbol(ident.value, rootTable);
         if (function == null || function instanceof Symbol.Var) {
-            ErrorList.add(IDENTIFIER_UNDEFINE, identifier.lineNumber);
+            ErrorList.add(IDENTIFIER_UNDEFINE, ident.lineNumber);
             return;
         }
 
@@ -52,7 +52,7 @@ public class ErrorUtil {
 
         // 函数参数数目是否匹配
         if (paramList.size() != ((Symbol.Function) function).params.size()) {
-            ErrorList.add(PARAM_COUNT_UNMATCH, identifier.lineNumber);
+            ErrorList.add(PARAM_COUNT_UNMATCH, ident.lineNumber);
             return;
         }
         // 函数参数类型是否匹配
@@ -60,18 +60,18 @@ public class ErrorUtil {
             TreeNode param = paramList.get(i);
             int rightValueDimension = getRightValueDimension(param, currentTable);
             if (rightValueDimension == -1) {
-                ErrorList.add(PARAM_TYPE_UNMATCH, identifier.lineNumber);
+                ErrorList.add(PARAM_TYPE_UNMATCH, ident.lineNumber);
             }
             else if (rightValueDimension >= 0) {
                 int declareDimension = ((Symbol.Function) function).params.get(i).dimension;
                 if (rightValueDimension != declareDimension) {
-                    ErrorList.add(PARAM_TYPE_UNMATCH, identifier.lineNumber);
+                    ErrorList.add(PARAM_TYPE_UNMATCH, ident.lineNumber);
                 }
             }
         }
     }
 
-    // 前序遍历找到第一个 identifier 或 int const，再去查表，获得维数
+    // 前序遍历找到第一个 ident 或 int const，再去查表，获得维数
     // 返回 -1 表明右值不合法（比如调用 void 函数，取地址维数超限等），-2 表示标识符未定义等异常
     private static int getRightValueDimension(TreeNode exp, Table currentTable) {
         assert exp.isType(_EXPRESSION_);
@@ -85,9 +85,9 @@ public class ErrorUtil {
             // LVal → Ident {'[' Exp ']'}
             // Number → IntConst
             if (t.isType(_UNARY_EXPRESSION_)) {
-                TreeNode identifier = t.children.get(0);
-                if (identifier.isType(IDENTIFIER)) {
-                    Symbol function = TableUtil.findSymbol(((Token) identifier).value, currentTable);
+                TreeNode ident = t.children.get(0);
+                if (ident.isType(IDENTIFIER)) {
+                    Symbol function = TableUtil.lookupSymbol(((Token) ident).value, currentTable);
                     if (function == null || function instanceof Symbol.Var)
                         return -2;
                     if (((Symbol.Function) function).isVoid)
@@ -96,12 +96,12 @@ public class ErrorUtil {
                 }
             }
             else if (t.isType(_LEFT_VALUE_)) {
-                Token identifier = (Token) t.children.get(0);
+                Token ident = (Token) t.children.get(0);
                 int leftBracketCount = 0;
                 for (TreeNode node : t.children) {
                     if (node.isType(LEFT_BRACKET)) leftBracketCount++;
                 }
-                Symbol var = TableUtil.findSymbol(identifier.value, currentTable);
+                Symbol var = TableUtil.lookupSymbol(ident.value, currentTable);
                 if (var == null || var instanceof Symbol.Function)
                     return -2;
                 int declareDimension = ((Symbol.Var) var).dimension;
@@ -124,10 +124,10 @@ public class ErrorUtil {
     public static void checkLeftValueConst(Nonterminal statement, Table currentTable) {
         assert statement.isType(_STATEMENT_);
         Nonterminal leftValue = (Nonterminal) statement.children.get(0);
-        Token identifier = (Token) leftValue.children.get(0);
-        Symbol var = TableUtil.findSymbol(identifier.value, currentTable);
+        Token ident = (Token) leftValue.children.get(0);
+        Symbol var = TableUtil.lookupSymbol(ident.value, currentTable);
         if (var == null || var instanceof Symbol.Function) return;
-        if (((Symbol.Var) var).isConst) ErrorList.add(CHANGE_CONST, identifier.lineNumber);
+        if (((Symbol.Var) var).isConst) ErrorList.add(CHANGE_CONST, ident.lineNumber);
     }
 
     // void 函数是否 return Exp;
