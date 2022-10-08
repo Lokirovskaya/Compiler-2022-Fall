@@ -1,4 +1,6 @@
-import symbol.ErrorList;
+import error.ErrorList;
+import intercode.InterCode;
+import intercode.InterCodeIO;
 import lexer.Lexer;
 import lexer.Token;
 import parser.Parser;
@@ -6,20 +8,20 @@ import parser.TreeNode;
 import symbol.TableBuilder;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
 
 public class Compiler {
     public static void main(String[] args) {
-        try {
-            String code = new String(Files.readAllBytes(Paths.get("testfile.txt")), StandardCharsets.UTF_8);
-            compile(code);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            String code = new String(Files.readAllBytes(Paths.get("testfile.txt")), StandardCharsets.UTF_8);
+//            compile(code);
+//        }
+//        catch (IOException e) {
+//            e.printStackTrace();
+//        }
+        InterCode intercode = InterCodeIO.input("inter.txt");
+        intercode.optimize();
+        InterCodeIO.output(intercode, "inter2.txt");
     }
 
     private static final boolean DEBUG = false;
@@ -36,7 +38,6 @@ public class Compiler {
         if (DEBUG) parser.output("output/parser.txt", true);
 
         TableBuilder tableBuilder = new TableBuilder(root);
-        tableBuilder.build();
         if (DEBUG) tableBuilder.output("output/table.txt");
 
         if (DEBUG) ErrorList.alert();

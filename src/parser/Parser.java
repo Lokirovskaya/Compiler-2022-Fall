@@ -1,6 +1,6 @@
 package parser;
 
-import symbol.ErrorList;
+import error.ErrorList;
 import lexer.Token;
 
 import java.io.IOException;
@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static symbol.Error.ErrorType.*;
+import static error.Error.ErrorType.*;
 import static lexer.Token.TokenType.*;
 import static parser.Nonterminal.NonterminalType.*;
 
@@ -30,6 +30,65 @@ public class Parser {
 
     public void output(String filename, boolean outputFullTree) throws IOException {
         ResultOutput.output(filename, result, outputFullTree);
+    }
+
+    // 消耗当前 token，判断当前 token 是否和指定类型匹配，不匹配则报错
+    private void consume(Token.TokenType judge) {
+        Token token = tokenReader.readToken();
+        if (token.isType(judge)) {
+            treeBuilder.addNode(token);
+            tokenReader.next();
+        }
+        else {
+            // 若进入这几个 Missing 分支，不要移动 tokenReader 指针，并补上这些符号
+            if (judge == SEMICOLON) {
+                ErrorList.add(MISSING_SEMICOLON, tokenReader.readPrevToken().lineNumber);
+                treeBuilder.addNode(new Token("missing ;", SEMICOLON, tokenReader.readPrevToken().lineNumber));
+            }
+            else if (judge == RIGHT_PAREN) {
+                ErrorList.add(MISSING_RIGHT_PAREN, tokenReader.readPrevToken().lineNumber);
+                treeBuilder.addNode(new Token("missing )", RIGHT_PAREN, tokenReader.readPrevToken().lineNumber));
+            }
+            else if (judge == RIGHT_BRACKET) {
+                ErrorList.add(MISSING_RIGHT_BRACKET, tokenReader.readPrevToken().lineNumber);
+                treeBuilder.addNode(new Token("missing }", RIGHT_BRACKET, tokenReader.readPrevToken().lineNumber));
+            }
+            else {
+                System.err.printf("Unexpected token '%s' at line %d, expect %s\n", token.value, token.lineNumber, judge.name());
+                tokenReader.next();
+            }
+        }
+    }
+
+    // 也是消耗并判断当前 token，但是有多个匹配可能
+    private void consume(Token.TokenType... judges) {
+        Token token = tokenReader.readToken();
+        boolean match = false;
+        for (Token.TokenType judge : judges) {
+            if (token.isType(judge)) {
+                match = true;
+                break;
+            }
+        }
+        if (match) {
+            treeBuilder.addNode(token);
+        }
+        else {
+            System.err.printf("Unexpected token '%s' at line %d, expect %s and others\n", token.value, token.lineNumber, judges[0].name());
+        }
+        tokenReader.next();
+    }
+
+    // 创建一个非终结符号，作为当前节点的子节点，并将树的指针指向它
+    private void createNonterminal(Nonterminal.NonterminalType type) {
+        Nonterminal node = new Nonterminal(type);
+        treeBuilder.addNode(node);
+        treeBuilder.moveTo(node);
+    }
+
+    // 结束当前非终结符号的解析，将树的指针重新指向父元素
+    private void endNonterminal() {
+        treeBuilder.moveUp();
     }
 
     // Parsing Begin! //
@@ -477,66 +536,5 @@ public class Parser {
         createNonterminal(_NUMBER_);
         consume(INT_CONST);
         endNonterminal();
-    }
-
-    // Parsing Utils //
-
-    // 消耗当前 token，判断当前 token 是否和指定类型匹配，不匹配则报错
-    private void consume(Token.TokenType judge) {
-        Token token = tokenReader.readToken();
-        if (token.isType(judge)) {
-            treeBuilder.addNode(token);
-            tokenReader.next();
-        }
-        else {
-            // 若进入这几个 Missing 分支，不要移动 tokenReader 指针，并补上这些符号
-            if (judge == SEMICOLON) {
-                ErrorList.add(MISSING_SEMICOLON, tokenReader.readPrevToken().lineNumber);
-                treeBuilder.addNode(new Token("missing ;", SEMICOLON, tokenReader.readPrevToken().lineNumber));
-            }
-            else if (judge == RIGHT_PAREN) {
-                ErrorList.add(MISSING_RIGHT_PAREN, tokenReader.readPrevToken().lineNumber);
-                treeBuilder.addNode(new Token("missing )", RIGHT_PAREN, tokenReader.readPrevToken().lineNumber));
-            }
-            else if (judge == RIGHT_BRACKET) {
-                ErrorList.add(MISSING_RIGHT_BRACKET, tokenReader.readPrevToken().lineNumber);
-                treeBuilder.addNode(new Token("missing }", RIGHT_BRACKET, tokenReader.readPrevToken().lineNumber));
-            }
-            else {
-                System.err.printf("Unexpected token '%s' at line %d, expect %s\n", token.value, token.lineNumber, judge.name());
-                tokenReader.next();
-            }
-        }
-    }
-
-    // 也是消耗并判断当前 token，但是有多个匹配可能
-    private void consume(Token.TokenType... judges) {
-        Token token = tokenReader.readToken();
-        boolean match = false;
-        for (Token.TokenType judge : judges) {
-            if (token.isType(judge)) {
-                match = true;
-                break;
-            }
-        }
-        if (match) {
-            treeBuilder.addNode(token);
-        }
-        else {
-            System.err.printf("Unexpected token '%s' at line %d, expect %s and others\n", token.value, token.lineNumber, judges[0].name());
-        }
-        tokenReader.next();
-    }
-
-    // 创建一个非终结符号，作为当前节点的子节点，并将树的指针指向它
-    private void createNonterminal(Nonterminal.NonterminalType type) {
-        Nonterminal node = new Nonterminal(type);
-        treeBuilder.addNode(node);
-        treeBuilder.moveTo(node);
-    }
-
-    // 结束当前非终结符号的解析，将树的指针重新指向父元素
-    private void endNonterminal() {
-        treeBuilder.moveUp();
     }
 }

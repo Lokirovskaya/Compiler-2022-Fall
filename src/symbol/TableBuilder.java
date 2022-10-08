@@ -1,5 +1,7 @@
 package symbol;
 
+import error.ErrorList;
+import error.ErrorUtil;
 import lexer.Token;
 import parser.Nonterminal;
 import parser.TreeNode;
@@ -10,11 +12,10 @@ import java.util.List;
 
 import static lexer.Token.TokenType.*;
 import static parser.Nonterminal.NonterminalType.*;
-import static symbol.Error.ErrorType.*;
+import static error.Error.ErrorType.*;
 
 public class TableBuilder {
-    // table 树的所有节点
-    private final List<Table> tableList = new ArrayList<>();
+    private final List<Table> tableList = new ArrayList<>(); // table 树的所有节点
     private Table current = null;
     private Table root;
     private final TreeNode syntaxTreeRoot;
@@ -43,6 +44,20 @@ public class TableBuilder {
     // while 块的深度，为 0 说明不在 while 块中
     private int loopDepth = 0;
 
+    // 新建符号表，作为当前表的子节点，然后将指针指向它
+    private void createTable() {
+        Table table = new Table();
+        tableList.add(table);
+        table.id = tableList.size() - 1;
+        table.parent = current;
+        current = table;
+    }
+
+    // 当前符号表移动到父表
+    private void moveUp() {
+        current = current.parent;
+    }
+
     private void runSyntaxTree(TreeNode _p) {
         if (_p instanceof Nonterminal) {
             Nonterminal p = (Nonterminal) _p;
@@ -56,39 +71,39 @@ public class TableBuilder {
                 case _FUNCTION_DEFINE_:
                 case _MAIN_FUNCTION_DEFINE_:
                     currentFunction = TableUtil.readFunctionDefine(p);
-                    addSymbol(currentFunction);
+                    TableUtil.addSymbol(currentFunction, current);
                     createTable();
                     skipCreateTableOnce = true;
                     if (!currentFunction.isVoid) {
-                        TableUtil.checkFinalReturnOfIntFunction(p);
+                        ErrorUtil.checkFinalReturnOfIntFunction(p);
                     }
                     break;
                 case _VAR_DEFINE_:
                 case _CONST_DEFINE_:
                     Symbol.Var var = TableUtil.readVarDefine(p);
-                    addSymbol(var);
+                    TableUtil.addSymbol(var, current);
                     break;
                 case _FUNCTION_DEFINE_PARAM_:
                     assert currentFunction != null;
                     Symbol.Var param = TableUtil.readVarDefine(p);
                     currentFunction.params.add(param);
-                    addSymbol(param);
+                    TableUtil.addSymbol(param, current);
                     break;
 
                 // 错误处理
                 case _STATEMENT_:
                     TreeNode firstChild = p.children.get(0);
                     if (firstChild.isType(PRINTF)) {
-                        TableUtil.checkFormatString(p);
+                        ErrorUtil.checkFormatString(p);
                     }
                     else if (firstChild.isType(RETURN)) {
                         if (currentFunction != null) {
-                            TableUtil.checkReturnOfFunction(p, currentFunction.isVoid);
+                            ErrorUtil.checkReturnOfFunction(p, currentFunction.isVoid);
                         }
                     }
                     // 赋值语句
                     else if (firstChild.isType(_LEFT_VALUE_)) {
-                        TableUtil.checkLeftValueConst(p, current);
+                        ErrorUtil.checkLeftValueConst(p, current);
                     }
                     else if (firstChild.isType(WHILE)) {
                         loopDepth++;
@@ -98,12 +113,12 @@ public class TableBuilder {
                     }
                     break;
                 case _LEFT_VALUE_:
-                    TableUtil.checkUndefineVar(p, current);
+                    ErrorUtil.checkUndefineVar(p, current);
                     break;
                 case _UNARY_EXPRESSION_:
                     // function call
                     if (p.children.get(0).isType(IDENTIFIER)) {
-                        TableUtil.checkFunctionCall(p, root, current);
+                        ErrorUtil.checkFunctionCall(p, root, current);
                     }
                     break;
             }
@@ -123,27 +138,5 @@ public class TableBuilder {
                 loopDepth--;
             }
         }
-    }
-
-    // 新建符号表，作为当前表的子节点，然后将指针指向它
-    private void createTable() {
-        Table table = new Table();
-        tableList.add(table);
-        table.id = tableList.size() - 1;
-        table.parent = current;
-        current = table;
-    }
-
-    // 当前符号表移动到父表
-    private void moveUp() {
-        current = current.parent;
-    }
-
-    // 向当前符号表添加符号
-    void addSymbol(Symbol symbol) {
-        if (!current.table.containsKey(symbol.name))
-            current.table.put(symbol.name, symbol);
-        else
-            ErrorList.add(IDENTIFIER_DUPLICATE, symbol.lineNumber);
     }
 }

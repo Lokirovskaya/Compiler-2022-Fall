@@ -1,4 +1,4 @@
-package symbol;
+package error;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -6,7 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 
-import static symbol.Error.ErrorType.*;
+import static error.Error.ErrorType.*;
 
 public class ErrorList {
     private static final List<Error> errorList = new ArrayList<>();
