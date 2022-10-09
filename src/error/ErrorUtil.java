@@ -19,7 +19,7 @@ public class ErrorUtil {
     public static void checkUndefineVar(Nonterminal identUse, Table currentTable) {
         // LVal → Ident {'[' Exp ']'}
         assert identUse.isType(_LEFT_VALUE_);
-        Token ident = (Token) identUse.children.get(0);
+        Token ident = (Token) identUse.child(0);
         Symbol symbol = TableUtil.lookupSymbol(ident.value, currentTable);
         if (symbol == null || symbol instanceof Symbol.Function) {
             ErrorList.add(IDENTIFIER_UNDEFINE, ident.lineNumber);
@@ -30,7 +30,7 @@ public class ErrorUtil {
     public static void checkFunctionCall(Nonterminal functionCall, Table rootTable, Table currentTable) {
         // UnaryExp → Ident '(' [FuncRParams] ')' | ...
         assert functionCall.isType(_UNARY_EXPRESSION_);
-        Token ident = (Token) functionCall.children.get(0);
+        Token ident = (Token) functionCall.child(0);
 
         // 函数是否定义
         Symbol function = TableUtil.lookupSymbol(ident.value, rootTable);
@@ -41,8 +41,8 @@ public class ErrorUtil {
 
         // FuncRParams → Exp { ',' Exp }
         List<Nonterminal> paramList = new ArrayList<>();
-        if (functionCall.children.get(2).isType(_FUNCTION_CALL_PARAM_LIST_)) {
-            Nonterminal paramListNode = (Nonterminal) functionCall.children.get(2);
+        if (functionCall.child(2).isType(_FUNCTION_CALL_PARAM_LIST_)) {
+            Nonterminal paramListNode = (Nonterminal) functionCall.child(2);
             for (TreeNode t : paramListNode.children) {
                 if (t.isType(_EXPRESSION_)) {
                     paramList.add((Nonterminal) t);
@@ -85,7 +85,7 @@ public class ErrorUtil {
             // LVal → Ident {'[' Exp ']'}
             // Number → IntConst
             if (t.isType(_UNARY_EXPRESSION_)) {
-                TreeNode ident = t.children.get(0);
+                TreeNode ident = t.child(0);
                 if (ident.isType(IDENTIFIER)) {
                     Symbol function = TableUtil.lookupSymbol(((Token) ident).value, currentTable);
                     if (function == null || function instanceof Symbol.Var)
@@ -96,7 +96,7 @@ public class ErrorUtil {
                 }
             }
             else if (t.isType(_LEFT_VALUE_)) {
-                Token ident = (Token) t.children.get(0);
+                Token ident = (Token) t.child(0);
                 int leftBracketCount = 0;
                 for (TreeNode node : t.children) {
                     if (node.isType(LEFT_BRACKET)) leftBracketCount++;
@@ -114,7 +114,7 @@ public class ErrorUtil {
             }
 
             for (int i = t.children.size() - 1; i >= 0; i--) {
-                stack.add(t.children.get(i));
+                stack.add(t.child(i));
             }
         }
         return -2;
@@ -123,8 +123,8 @@ public class ErrorUtil {
     // 检查左值是否是常数
     public static void checkLeftValueConst(Nonterminal statement, Table currentTable) {
         assert statement.isType(_STATEMENT_);
-        Nonterminal leftValue = (Nonterminal) statement.children.get(0);
-        Token ident = (Token) leftValue.children.get(0);
+        Nonterminal leftValue = (Nonterminal) statement.child(0);
+        Token ident = (Token) leftValue.child(0);
         Symbol var = TableUtil.lookupSymbol(ident.value, currentTable);
         if (var == null || var instanceof Symbol.Function) return;
         if (((Symbol.Var) var).isConst) ErrorList.add(CHANGE_CONST, ident.lineNumber);
@@ -134,9 +134,9 @@ public class ErrorUtil {
     public static void checkReturnOfFunction(Nonterminal statement, boolean isVoid) {
         assert statement.isType(_STATEMENT_);
         // 'return' [Exp] ';'
-        boolean hasExpression = statement.children.get(1).isType(_EXPRESSION_);
+        boolean hasExpression = statement.child(1).isType(_EXPRESSION_);
         boolean error = isVoid && hasExpression /* || !isVoid && !hasExpression */;
-        int returnLineNumber = ((Token) statement.children.get(0)).lineNumber;
+        int returnLineNumber = ((Token) statement.child(0)).lineNumber;
         if (error) ErrorList.add(RETURN_EXPRESSION_WHEN_VOID, returnLineNumber);
     }
 
@@ -145,20 +145,20 @@ public class ErrorUtil {
         // FuncDef → FuncType Ident '(' [FuncFParams] ')' Block
         // MainFuncDef → 'int' 'main' '(' ')' Block
         assert funcDef.isType(_FUNCTION_DEFINE_) || funcDef.isType(_MAIN_FUNCTION_DEFINE_);
-        Nonterminal block = (Nonterminal) funcDef.children.get(funcDef.children.size() - 1);
+        Nonterminal block = (Nonterminal) funcDef.child(funcDef.children.size() - 1);
         // Block → '{' { BlockItem } '}'
         // BlockItem → Decl | Stmt
-        TreeNode lastItem = block.children.get(block.children.size() - 2);
-        int rightBraceLineNumber = ((Token) block.children.get(block.children.size() - 1)).lineNumber;
+        TreeNode lastItem = block.child(block.children.size() - 2);
+        int rightBraceLineNumber = ((Token) block.child(block.children.size() - 1)).lineNumber;
         Runnable error = () -> ErrorList.add(MISSING_RETURN, rightBraceLineNumber);
 
         if (!lastItem.isType(_BLOCK_ITEM_)) error.run(); // empty block, lastItem == '}'
         else {
-            Nonterminal statement = (Nonterminal) ((Nonterminal) lastItem).children.get(0);
+            Nonterminal statement = (Nonterminal) ((Nonterminal) lastItem).child(0);
             if (!statement.isType(_STATEMENT_)) error.run(); // 最后一句是 declare
             else {
-                if (!statement.children.get(0).isType(RETURN)) error.run(); // 不是 return 语句
-                else if (!statement.children.get(1).isType(_EXPRESSION_)) error.run(); // return 空
+                if (!statement.child(0).isType(RETURN)) error.run(); // 不是 return 语句
+                else if (!statement.child(1).isType(_EXPRESSION_)) error.run(); // return 空
             }
         }
     }

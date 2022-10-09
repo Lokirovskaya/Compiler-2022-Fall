@@ -102,7 +102,7 @@ public class TableBuilder {
 
                 // 错误处理
                 case _STATEMENT_:
-                    TreeNode firstChild = p.children.get(0);
+                    TreeNode firstChild = p.child(0);
                     if (firstChild.isType(PRINTF)) {
                         ErrorUtil.checkFormatString(p);
                     }
@@ -127,7 +127,7 @@ public class TableBuilder {
                     break;
                 case _UNARY_EXPRESSION_:
                     // function call
-                    if (p.children.get(0).isType(IDENTIFIER)) {
+                    if (p.child(0).isType(IDENTIFIER)) {
                         ErrorUtil.checkFunctionCall(p, root, current);
                     }
                     break;
@@ -144,7 +144,7 @@ public class TableBuilder {
             else if (p.isType(_FUNCTION_DEFINE_) || p.isType(_MAIN_FUNCTION_DEFINE_)) {
                 currentFunction = null;
             }
-            else if (p.isType(_STATEMENT_) && p.children.get(0).isType(WHILE)) {
+            else if (p.isType(_STATEMENT_) && p.child(0).isType(WHILE)) {
                 loopDepth--;
             }
         }

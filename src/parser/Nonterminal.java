@@ -11,9 +11,13 @@ public class Nonterminal extends TreeNode {
         this.type = type;
     }
 
+    public TreeNode child(int i) {
+        return children.get(i);
+    }
+
     @Override
-    public boolean isType(NonterminalType t) {
-        return this.type == t;
+    public boolean isType(NonterminalType n) {
+        return this.type == n;
     }
 
     public enum NonterminalType {

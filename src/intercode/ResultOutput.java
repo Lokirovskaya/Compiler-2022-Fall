@@ -31,10 +31,11 @@ class ResultOutput {
             else if (q.op == PRINT_STR) sb.append(String.format("prints %s\n", q.label));
             else if (q.op == PRINT_CHAR) sb.append(String.format("printc %s\n", q.x1));
             else if (q.op == FUNC) sb.append(String.format("func %s\n", q.label));
-            else if (q.op == LABEL) sb.append(String.format("label %s\n", q.label));
+            else if (q.op == LABEL) sb.append(String.format("%s:\n", q.label));
             else if (q.op == GOTO) sb.append(String.format("goto %s\n", q.label));
             else if (q.op == RETURN) sb.append(String.format("return %s\n", q.x1));
-            else if (q.op == LOAD_RETURN) sb.append(String.format("%s = @ret\n", q.target));
+            else if (q.op == RETURN_VOID) sb.append("return\n");
+            else if (q.op == LOAD_RETURN) sb.append(String.format("%s = @return\n", q.target));
             else if (q.op == CALL) sb.append(String.format("call %s\n", q.label));
             else if (q.op == PUSH) sb.append(String.format("push %s\n", q.x1));
             else if (q.op == PARAM) sb.append(String.format("param %s\n", q.x1));

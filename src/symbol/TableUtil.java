@@ -1,5 +1,6 @@
 package symbol;
 
+import intercode.Operand;
 import lexer.Token;
 import parser.Nonterminal;
 import parser.TreeNode;
@@ -45,7 +46,7 @@ public class TableUtil {
             if (p.isType(LEFT_BRACKET)) bracketCount++;
         }
         var.dimension = bracketCount;
-
+        var.capacity = new Operand.VirtualReg[var.dimension];
         return var;
     }
 
@@ -58,7 +59,7 @@ public class TableUtil {
 
         if (funcDef.isType(_FUNCTION_DEFINE_)) {
             Nonterminal funcType = (Nonterminal) nodes.get(0);
-            function.isVoid = funcType.children.get(0).isType(VOID);
+            function.isVoid = funcType.child(0).isType(VOID);
             function.name = ((Token) nodes.get(1)).value;
             function.lineNumber = ((Token) nodes.get(1)).lineNumber;
         }

@@ -26,7 +26,7 @@ public class Compiler {
         }
     }
 
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = true;
 
     static void compile(String code) throws IOException {
         Lexer lexer = new Lexer(code);
@@ -50,8 +50,8 @@ public class Compiler {
         Generator generator = new Generator(root, identSymbolMap);
         InterCode inter = generator.generate();
 
-        inter.output("inter.txt");
+        inter.output("output/inter.txt");
         inter.optimize();
-        inter.output("inter_opt.txt");
+        inter.output("output/inter_opt.txt");
     }
 }

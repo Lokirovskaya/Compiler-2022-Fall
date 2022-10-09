@@ -58,7 +58,7 @@ class TreeBuilder {
                     if (L.children.size() > 1) {
                         int size = L.children.size();
                         assert size % 2 == 1;
-                        Nonterminal R = (Nonterminal) L.children.get(0);
+                        Nonterminal R = (Nonterminal) L.child(0);
                         List<TreeNode> OR = new ArrayList<>(L.children.subList(size - 2, size));
                         Nonterminal L_ = new Nonterminal(L.type);
                         L_.children.add(R); // L'.left = R

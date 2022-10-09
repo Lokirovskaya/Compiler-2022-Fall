@@ -10,8 +10,8 @@ public abstract class TreeNode {
         else return ((Token) this).type == t;
     }
 
-    public boolean isType(Nonterminal.NonterminalType t) {
+    public boolean isType(Nonterminal.NonterminalType n) {
         if (this instanceof Token) return false;
-        else return ((Nonterminal) this).type == t;
+        else return ((Nonterminal) this).type == n;
     }
 }

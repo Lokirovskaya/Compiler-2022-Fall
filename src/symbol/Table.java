@@ -1,11 +1,10 @@
 package symbol;
 
+import error.Error;
 import error.ErrorList;
 
 import java.util.HashMap;
 import java.util.Map;
-
-import static error.Error.ErrorType.IDENTIFIER_DUPLICATE;
 
 public class Table {
     Map<String, Symbol> table = new HashMap<>();
@@ -18,6 +17,6 @@ public class Table {
             table.put(symbol.name, symbol);
             symbol.selfTable = this;
         }
-        else ErrorList.add(IDENTIFIER_DUPLICATE, symbol.lineNumber);
+        else ErrorList.add(Error.ErrorType.IDENTIFIER_DUPLICATE, symbol.lineNumber);
     }
 }
