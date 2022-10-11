@@ -13,11 +13,15 @@ public abstract class Symbol {
     public static class Var extends Symbol {
         public boolean isConst;
         public int dimension; // 普通变量为 0
-        // 中间代码生成时填
         public Operand.VirtualReg reg;
-        // 数组每一维的容量，从高维到低维；若维度 > 1，最高维容量（capacity[0]）可以不存
-        // 已在生成符号时初始化
-        public Operand.VirtualReg[] capacity;
+        // 对于三维数组 int a[x][y][z]
+        // volume[0] = y*z; volume[1] = z; volume[2] = 1; x 是无用的，不需要计算
+        // 储存的是上述运算的运算结果 reg，事实上 volume[-1] == null
+        public Operand.VirtualReg[] volume;
+
+        public boolean isArray() {
+            return dimension > 0;
+        }
     }
 
     public static class Function extends Symbol {

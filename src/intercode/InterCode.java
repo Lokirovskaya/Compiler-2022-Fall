@@ -24,10 +24,6 @@ public class InterCode {
         list.addLast(quater);
     }
 
-    void addQuater(Quaternion.OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
-        addQuater(new Quaternion(op, target, x1, x2, label));
-    }
-
     public Integer getRegValue(int regID) {
         return virtualRegMap.get(regID);
     }

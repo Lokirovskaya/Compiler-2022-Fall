@@ -6,7 +6,11 @@ import parser.Nonterminal;
 import parser.TreeNode;
 import symbol.Symbol;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
 
 import static intercode.Operand.*;
 import static lexer.Token.TokenType.*;
@@ -29,29 +33,80 @@ public class Generator {
         return inter;
     }
 
-    // 用于存储表达式的结果
+    private Symbol.Var getVar(Token varIdent) {
+        assert varIdent.isType(IDENTIFIER);
+        return (Symbol.Var) identSymbolMap.get(varIdent);
+    }
+
+    private Symbol.Function getFunc(Token funcIdent) {
+        assert funcIdent.isType(IDENTIFIER);
+        return (Symbol.Function) identSymbolMap.get(funcIdent);
+    }
+
     private VirtualReg newReg() {
         return new VirtualReg(regCount++);
     }
 
-    private VirtualReg getVarReg(Token ident) {
-        assert ident.isType(IDENTIFIER);
-        // 请保证传入的标识符对应变量或常量
-        Symbol.Var var = (Symbol.Var) identSymbolMap.get(ident);
+    private void newQuater(Quaternion.OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
+        inter.addQuater(new Quaternion(op, target, x1, x2, label));
+    }
+
+    // 获得变量对应的寄存器
+    // 如果未对变量分配寄存器，则分配一个，并设置寄存器的各属性
+    // 返回的寄存器可能指向地址
+    private VirtualReg getVarReg(Token varIdent) {
+        assert varIdent.isType(IDENTIFIER);
+        Symbol.Var var = getVar(varIdent);
         if (var.reg == null) {
             var.reg = newReg();
             var.reg.name = var.name;
             var.reg.declareConst = var.isConst;
-            var.reg.isAddr = var.dimension > 0;
+            var.reg.isAddr = var.isArray();
         }
         return var.reg;
     }
 
-    private Symbol.Function getFunc(Token ident) {
-        assert ident.isType(IDENTIFIER);
-        // 请保证传入的标识符对应函数
-        return (Symbol.Function) identSymbolMap.get(ident);
+    // 设置数组的 volume 字段，若定义 int a[x][y][z]，请传入 size = {y,z}
+    private void setVolume(Symbol.Var array, List<VirtualReg> size) {
+        assert array.isArray();
+        assert size.size() == array.volume.length - 1;
+        if (array.dimension > 1) {
+            // volume[k-1] = volume[k] * size[k-1], volume[-2] = size[-1]
+            array.volume[array.volume.length - 2] = size.get(size.size() - 1);
+            for (int k = array.volume.length - 2; k >= 1; k--) {
+                VirtualReg volume = newReg();
+                newQuater(OperatorType.MULT, volume, array.volume[k], size.get(k - 1), null);
+                array.volume[k - 1] = volume;
+            }
+        }
     }
+
+    // 获取多维数组调用的偏移量，若访问 a[x][y][z]，请传入 offset = {x,y,z}
+    private VirtualReg getLinearOffset(Symbol.Var array, List<VirtualReg> offset) {
+        assert array.isArray();
+        if (array.dimension == 1) return offset.get(0);
+        else {
+            // return sum(offset[i]*volume[i]) (offset.len <= volume.len, volume[-1] == 1)
+            // 计算上述值的伪代码:
+            // if offset.len == volume.len: ans = offset[offset.len-1]
+            // else: ans = offset[offset.len-1] * volume[offset.len-1]
+            // for i from (offset.len-2) to 0 : ans += offset[i] * volume[i]
+            // return ans
+            VirtualReg ans = newReg();
+            VirtualReg multAns = newReg();
+            if (offset.size() == array.volume.length)
+                newQuater(OperatorType.SET, ans, offset.get(offset.size() - 1), null, null);
+            else
+                newQuater(OperatorType.MULT, ans, offset.get(offset.size() - 1), array.volume[offset.size() - 1], null);
+            for (int i = offset.size() - 2; i >= 0; i--) {
+                newQuater(OperatorType.MULT, multAns, offset.get(i), array.volume[i], null);
+                newQuater(OperatorType.ADD, ans, ans, multAns, null);
+            }
+            return ans;
+        }
+    }
+
+    // Generating begin! //
 
     private void COMPILE_UNIT(TreeNode _p) {
         // 跳过许多不必要的节点，从指定入口开始翻译
@@ -75,11 +130,20 @@ public class Generator {
 
     private void VAR_DEFINE(Nonterminal def) {
         assert def.isType(_VAR_DEFINE_) || def.isType(_CONST_DEFINE_);
+        Token ident = (Token) def.child(0);
+        Symbol.Var var = getVar(ident);
+        if (var.isArray()) {
+            List<VirtualReg> size = def.children.stream()
+                    .filter(p -> p.isType(_CONST_EXPRESSION_))
+                    .skip(1) // 最高维参数不重要
+                    .map(e -> EXPRESSION((Nonterminal) e))
+                    .collect(Collectors.toList());
+            setVolume(var, size);
+        }
+        // if def has an init value
         TreeNode initVal = def.child(def.children.size() - 1);
         if (initVal.isType(_VAR_INIT_VALUE_) || initVal.isType(_CONST_INIT_VALUE_)) {
-            Token ident = (Token) def.child(0);
-            VirtualReg reg = getVarReg(ident);
-            VAR_INIT_VALUE((Nonterminal) initVal, reg);
+            VAR_INIT_VALUE((Nonterminal) initVal, getVarReg(ident));
         }
     }
 
@@ -87,20 +151,19 @@ public class Generator {
     private void VAR_INIT_VALUE(Nonterminal init, VirtualReg target) {
         assert init.isType(_VAR_INIT_VALUE_) || init.isType(_CONST_INIT_VALUE_);
         if (init.child(0).isType(_EXPRESSION_) || init.child(0).isType(_CONST_EXPRESSION_)) {
-            VirtualReg expAns = newReg();
-            EXPRESSION((Nonterminal) init.child(0), expAns);
-            inter.addQuater(OperatorType.SET, target, expAns, null, null);
+            VirtualReg expAns = EXPRESSION((Nonterminal) init.child(0));
+            newQuater(OperatorType.SET, target, expAns, null, null);
         }
     }
 
     private void FUNCTION_DEFINE(Nonterminal def) {
         assert def.isType(_FUNCTION_DEFINE_) || def.isType(_MAIN_FUNCTION_DEFINE_);
         if (def.isType(_MAIN_FUNCTION_DEFINE_)) {
-            inter.addQuater(OperatorType.FUNC, null, null, null, new Label("main"));
+            newQuater(OperatorType.FUNC, null, null, null, new Label("main"));
         }
         else {
             Symbol.Function func = getFunc((Token) def.child(1));
-            inter.addQuater(OperatorType.FUNC, null, null, null, new Label(func.name));
+            newQuater(OperatorType.FUNC, null, null, null, new Label(func.name));
             // todo: params
         }
         BLOCK(def.child(def.children.size() - 1));
@@ -129,20 +192,32 @@ public class Generator {
         assert stmt.isType(_STATEMENT_);
         // LVal '=' Exp ';' |  LVal '=' 'getint''('')'';'
         if (stmt.child(0).isType(_LEFT_VALUE_)) {
-            // todo: array
-            VirtualReg leftValue = getVarReg((Token) ((Nonterminal) stmt.child(0)).child(0));
+            VirtualReg expAns;
             if (stmt.child(2).isType(_EXPRESSION_)) {
-                VirtualReg expAns = newReg();
-                EXPRESSION((Nonterminal) stmt.child(2), expAns);
-                inter.addQuater(OperatorType.SET, leftValue, expAns, null, null);
+                expAns = EXPRESSION((Nonterminal) stmt.child(2));
             }
-            else if (stmt.child(2).isType(GETINT)) {
-                inter.addQuater(OperatorType.GETINT, leftValue, null, null, null);
+            else { // getint exp
+                expAns = newReg();
+                newQuater(OperatorType.GETINT, expAns, null, null, null);
+            }
+            Nonterminal leftValue = (Nonterminal) stmt.child(0);
+            Token ident = (Token) leftValue.child(0);
+            Symbol.Var var = getVar(ident);
+            if (var.isArray()) {
+                List<VirtualReg> offset = leftValue.children.stream()
+                        .filter(p -> p.isType(_EXPRESSION_))
+                        .map(e -> EXPRESSION((Nonterminal) e))
+                        .collect(Collectors.toList());
+                VirtualReg linearOffset = getLinearOffset(var, offset);
+                newQuater(OperatorType.SET_ARRAY, getVarReg(ident), linearOffset, expAns, null);
+            }
+            else {
+                newQuater(OperatorType.SET, getVarReg(ident), expAns, null, null);
             }
         }
         // [Exp] ';'
         else if (stmt.child(0).isType(_EXPRESSION_)) {
-            EXPRESSION((Nonterminal) stmt.child(0), newReg());
+            EXPRESSION((Nonterminal) stmt.child(0));
         }
         // Block
         else if (stmt.child(0).isType(_BLOCK_)) {
@@ -151,100 +226,124 @@ public class Generator {
         // 'return' [Exp] ';'
         else if (stmt.child(0).isType(RETURN)) {
             if (stmt.child(1).isType(_EXPRESSION_)) {
-                VirtualReg expAns = newReg();
-                EXPRESSION((Nonterminal) stmt.child(1), expAns);
-                inter.addQuater(OperatorType.RETURN, null, expAns, null, null);
+                VirtualReg expAns = EXPRESSION((Nonterminal) stmt.child(1));
+                newQuater(OperatorType.RETURN, null, expAns, null, null);
             }
-            else inter.addQuater(OperatorType.RETURN_VOID, null, null, null, null);
+            else newQuater(OperatorType.RETURN_VOID, null, null, null, null);
         }
     }
-
 
     // ans 是综合属性，表达式所得值的寄存器
-    private void EXPRESSION(Nonterminal exp, VirtualReg ans) {
+    private VirtualReg EXPRESSION(Nonterminal exp) {
         assert exp.isType(_EXPRESSION_) || exp.isType(_CONST_EXPRESSION_);
-        ADD_EXPRESSION((Nonterminal) exp.child(0), ans);
+        return ADD_EXPRESSION((Nonterminal) exp.child(0));
     }
 
-    private void ADD_EXPRESSION(Nonterminal exp, VirtualReg ans) {
+    private VirtualReg ADD_EXPRESSION(Nonterminal exp) {
         assert exp.isType(_ADD_EXPRESSION_);
         if (exp.child(0).isType(_MULTIPLY_EXPRESSION_))
-            MULTIPLY_EXPRESSION((Nonterminal) exp.child(0), ans);
+            return MULTIPLY_EXPRESSION((Nonterminal) exp.child(0));
         else {
             OperatorType op = exp.child(1).isType(PLUS) ? OperatorType.ADD : OperatorType.SUB;
-            VirtualReg addAns = newReg(), multAns = newReg();
-            ADD_EXPRESSION((Nonterminal) exp.child(0), addAns);
-            MULTIPLY_EXPRESSION((Nonterminal) exp.child(2), multAns);
-            inter.addQuater(op, ans, addAns, multAns, null);
+            VirtualReg ans = newReg();
+            newQuater(op, ans,
+                    ADD_EXPRESSION((Nonterminal) exp.child(0)),
+                    MULTIPLY_EXPRESSION((Nonterminal) exp.child(2)), null);
+            return ans;
         }
     }
 
-    private void MULTIPLY_EXPRESSION(Nonterminal exp, VirtualReg ans) {
+    private VirtualReg MULTIPLY_EXPRESSION(Nonterminal exp) {
         assert exp.isType(_MULTIPLY_EXPRESSION_);
-        if (exp.child(0).isType(_UNARY_EXPRESSION_))
-            UNARY_EXPRESSION((Nonterminal) exp.child(0), ans);
+        if (exp.child(0).isType(_UNARY_EXPRESSION_)) {
+            return UNARY_EXPRESSION((Nonterminal) exp.child(0));
+        }
         else {
             OperatorType op;
             if (exp.child(1).isType(MULTIPLY)) op = OperatorType.MULT;
             else if (exp.child(1).isType(DIVIDE)) op = OperatorType.DIV;
             else op = OperatorType.MOD;
-            VirtualReg multAns = newReg(), unaryAns = newReg();
-            MULTIPLY_EXPRESSION((Nonterminal) exp.child(0), multAns);
-            UNARY_EXPRESSION((Nonterminal) exp.child(2), unaryAns);
-            inter.addQuater(op, ans, multAns, unaryAns, null);
+            VirtualReg ans = newReg();
+            newQuater(op, ans,
+                    MULTIPLY_EXPRESSION((Nonterminal) exp.child(0)),
+                    UNARY_EXPRESSION((Nonterminal) exp.child(2)), null);
+            return ans;
         }
     }
 
-    private void UNARY_EXPRESSION(Nonterminal exp, VirtualReg ans) {
+    private VirtualReg UNARY_EXPRESSION(Nonterminal exp) {
         assert exp.isType(_UNARY_EXPRESSION_);
-        if (exp.child(0).isType(_PRIMARY_EXPRESSION_))
-            PRIMARY_EXPRESSION((Nonterminal) exp.child(0), ans);
-        else if (exp.child(0).isType(IDENTIFIER)) { // func call
+        if (exp.child(0).isType(_PRIMARY_EXPRESSION_)) {
+            return PRIMARY_EXPRESSION((Nonterminal) exp.child(0));
+        }
+        // function call
+        else if (exp.child(0).isType(IDENTIFIER)) {
             Token ident = (Token) exp.child(0);
             Symbol.Function func = getFunc(ident);
             // todo: params
-            inter.addQuater(OperatorType.CALL, null, null, null, new Label(func.name));
-            if (!func.isVoid)
-                inter.addQuater(OperatorType.LOAD_RETURN, ans, null, null, null);
+            newQuater(OperatorType.CALL, null, null, null, new Label(func.name));
+            if (!func.isVoid) {
+                VirtualReg ans = newReg();
+                newQuater(OperatorType.LOAD_RETURN, ans, null, null, null);
+                return ans;
+            }
+            else return null;
         }
         // UnaryExp → UnaryOp UnaryExp, UnaryOp → '+' | '−' | '!'
         else {
             Nonterminal unaryOp = (Nonterminal) exp.child(0);
             if (unaryOp.child(0).isType(PLUS)) { // do nothing
-                UNARY_EXPRESSION((Nonterminal) exp.child(1), ans);
+                return UNARY_EXPRESSION((Nonterminal) exp.child(1));
             }
             else if (unaryOp.child(0).isType(MINUS)) { // negate
-                VirtualReg x = newReg();
-                UNARY_EXPRESSION((Nonterminal) exp.child(1), x);
-                inter.addQuater(OperatorType.SUB, ans, zeroReg, x, null);
+                VirtualReg ans = newReg();
+                newQuater(OperatorType.SUB, ans,
+                        zeroReg,
+                        UNARY_EXPRESSION((Nonterminal) exp.child(1)), null);
+                return ans;
             }
             else {
-                // todo
+                // todo '!'
+                return null;
             }
         }
     }
 
-    private void PRIMARY_EXPRESSION(Nonterminal exp, VirtualReg ans) {
+    private VirtualReg PRIMARY_EXPRESSION(Nonterminal exp) {
         assert exp.isType(_PRIMARY_EXPRESSION_);
         if (exp.child(0).isType(LEFT_PAREN))
-            EXPRESSION((Nonterminal) exp.child(1), newReg());
+            return EXPRESSION((Nonterminal) exp.child(1));
         else if (exp.child(0).isType(_LEFT_VALUE_))
-            LEFT_VALUE_EXPRESSION((Nonterminal) exp.child(0), ans);
-        else if (exp.child(0).isType(_NUMBER_))
-            NUMBER((Nonterminal) exp.child(0), ans);
+            return LEFT_VALUE_EXPRESSION((Nonterminal) exp.child(0));
+        else
+            return NUMBER((Nonterminal) exp.child(0));
     }
 
-    private void LEFT_VALUE_EXPRESSION(Nonterminal exp, VirtualReg ans) {
+    private VirtualReg LEFT_VALUE_EXPRESSION(Nonterminal exp) {
         assert exp.isType(_LEFT_VALUE_);
+        VirtualReg ans = newReg();
         Token ident = (Token) exp.child(0);
-        // todo: array
-        inter.addQuater(OperatorType.SET, ans, getVarReg(ident), null, null);
+        Symbol.Var var = getVar(ident);
+        if (var.isArray()) {
+            List<VirtualReg> offset = exp.children.stream()
+                    .filter(p -> p.isType(_EXPRESSION_))
+                    .map(e -> EXPRESSION((Nonterminal) e))
+                    .collect(Collectors.toList());
+            VirtualReg linearOffset = getLinearOffset(var, offset);
+            newQuater(OperatorType.GET_ARRAY, ans, getVarReg(ident), linearOffset, null);
+        }
+        else {
+            newQuater(OperatorType.SET, ans, getVarReg(ident), null, null);
+        }
+        return ans;
     }
 
-    private void NUMBER(Nonterminal exp, VirtualReg ans) {
+    private VirtualReg NUMBER(Nonterminal exp) {
         assert exp.isType(_NUMBER_);
         Token number = (Token) exp.child(0);
         int inst = Integer.parseInt(number.value);
-        inter.addQuater(OperatorType.SET, ans, new InstNumber(inst), null, null);
+        VirtualReg ans = newReg();
+        newQuater(OperatorType.SET, ans, new InstNumber(inst), null, null);
+        return ans;
     }
 }

@@ -7,6 +7,7 @@ public class Quaternion {
     public Operand.Label label;
 
     public Quaternion(OperatorType op, Operand.VirtualReg target, Operand x1, Operand x2, Operand.Label label) {
+        assert target == null || target.regID != 0; // cannot write $0
         this.op = op;
         this.target = target;
         this.x1 = x1;
