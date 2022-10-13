@@ -5,12 +5,12 @@ import lexer.Token;
 import parser.Nonterminal;
 import parser.TreeNode;
 import symbol.Symbol;
+import util.Pair;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
 
 import static intercode.Operand.*;
 import static lexer.Token.TokenType.*;
@@ -21,7 +21,9 @@ public class Generator {
     private final TreeNode syntaxTreeRoot;
     private final Map<Token, Symbol> identSymbolMap;
     private int regCount = 1;
+    private int labelCount =1;
     private static final VirtualReg zeroReg = new VirtualReg(0);
+    private final Stack<Pair<Label, Label>> whileLabelsList = new Stack<>();
 
     public Generator(TreeNode syntaxTreeRoot, Map<Token, Symbol> identSymbolMap) {
         this.syntaxTreeRoot = syntaxTreeRoot;
@@ -47,6 +49,10 @@ public class Generator {
         return new VirtualReg(regCount++);
     }
 
+    private Label newLabel() {
+        return new Label("label_" + labelCount++);
+    }
+
     private void newQuater(Quaternion.OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
         inter.addQuater(new Quaternion(op, target, x1, x2, label));
     }
@@ -66,43 +72,21 @@ public class Generator {
         return var.reg;
     }
 
-    // 设置数组的 volume 字段，若定义 int a[x][y][z]，请传入 size = {y,z}
-    private void setVolume(Symbol.Var array, List<VirtualReg> size) {
-        assert array.isArray();
-        assert size.size() == array.volume.length - 1;
-        if (array.dimension > 1) {
-            // volume[k-1] = volume[k] * size[k-1], volume[-2] = size[-1]
-            array.volume[array.volume.length - 2] = size.get(size.size() - 1);
-            for (int k = array.volume.length - 2; k >= 1; k--) {
-                VirtualReg volume = newReg();
-                newQuater(OperatorType.MULT, volume, array.volume[k], size.get(k - 1), null);
-                array.volume[k - 1] = volume;
-            }
-        }
-    }
-
-    // 获取多维数组调用的偏移量，若访问 a[x][y][z]，请传入 offset = {x,y,z}
+    // 获取多维数组调用的偏移量，若访问 a[x][y]，请传入 offset = {x,y}
     private VirtualReg getLinearOffset(Symbol.Var array, List<VirtualReg> offset) {
         assert array.isArray();
+        if (offset.size() == 0) return zeroReg;
         if (array.dimension == 1) return offset.get(0);
         else {
-            // return sum(offset[i]*volume[i]) (offset.len <= volume.len, volume[-1] == 1)
-            // 计算上述值的伪代码:
-            // if offset.len == volume.len: ans = offset[offset.len-1]
-            // else: ans = offset[offset.len-1] * volume[offset.len-1]
-            // for i from (offset.len-2) to 0 : ans += offset[i] * volume[i]
-            // return ans
-            VirtualReg ans = newReg();
+            // ans = x * a.sizeOfLine + y
             VirtualReg multAns = newReg();
-            if (offset.size() == array.volume.length)
-                newQuater(OperatorType.SET, ans, offset.get(offset.size() - 1), null, null);
-            else
-                newQuater(OperatorType.MULT, ans, offset.get(offset.size() - 1), array.volume[offset.size() - 1], null);
-            for (int i = offset.size() - 2; i >= 0; i--) {
-                newQuater(OperatorType.MULT, multAns, offset.get(i), array.volume[i], null);
-                newQuater(OperatorType.ADD, ans, ans, multAns, null);
+            newQuater(OperatorType.MULT, multAns, offset.get(0), array.sizeOfLine, null);
+            if (offset.size() == 1) return multAns; // 不完全取地址
+            else {
+                VirtualReg ans = newReg();
+                newQuater(OperatorType.ADD, ans, multAns, offset.get(1), null);
+                return ans;
             }
-            return ans;
         }
     }
 
@@ -133,12 +117,10 @@ public class Generator {
         Token ident = (Token) def.child(0);
         Symbol.Var var = getVar(ident);
         if (var.isArray()) {
-            List<VirtualReg> size = def.children.stream()
-                    .filter(p -> p.isType(_CONST_EXPRESSION_))
-                    .skip(1) // 最高维参数不重要
-                    .map(e -> EXPRESSION((Nonterminal) e))
-                    .collect(Collectors.toList());
-            setVolume(var, size);
+            // Ident '[' ConstExp ']' '[' ConstExp ']'
+            if (var.dimension == 2) {
+                var.sizeOfLine = EXPRESSION((Nonterminal) def.child(5));
+            }
         }
         // if def has an init value
         TreeNode initVal = def.child(def.children.size() - 1);
@@ -231,9 +213,50 @@ public class Generator {
             }
             else newQuater(OperatorType.RETURN_VOID, null, null, null, null);
         }
+        // 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
+        else if (stmt.child(0).isType(IF)) {
+            boolean hasElse = stmt.children.size() > 5;
+            if (!hasElse) {
+                Label trueLabel = newLabel(), falseLabel = newLabel();
+                CONDITION((Nonterminal) stmt.child(2), trueLabel, falseLabel);
+                newQuater(OperatorType.LABEL, null, null, null, trueLabel);
+                STATEMENT((Nonterminal) stmt.child(4));
+                newQuater(OperatorType.LABEL, null, null, null, falseLabel);
+            }
+            else {
+                Label trueLabel = newLabel(), falseLabel = newLabel(), endLabel = newLabel();
+                CONDITION((Nonterminal) stmt.child(2), trueLabel, falseLabel);
+                newQuater(OperatorType.LABEL, null, null, null, trueLabel);
+                STATEMENT((Nonterminal) stmt.child(4));
+                newQuater(OperatorType.GOTO, null, null, null, endLabel);
+                newQuater(OperatorType.LABEL, null, null, null, falseLabel);
+                STATEMENT((Nonterminal) stmt.child(6));
+                newQuater(OperatorType.LABEL, null, null, null, endLabel);
+            }
+        }
+        // 'while' '(' Cond ')' Stmt
+        else if (stmt.child(0).isType(WHILE)) {
+            Label startLabel = newLabel(), trueLabel = newLabel(), falseLabel = newLabel();
+            whileLabelsList.push(new Pair<>(startLabel, falseLabel));
+            newQuater(OperatorType.LABEL, null, null, null, startLabel);
+            CONDITION((Nonterminal) stmt.child(2), trueLabel, falseLabel);
+            newQuater(OperatorType.LABEL, null, null, null, trueLabel);
+            STATEMENT((Nonterminal) stmt.child(4));
+            newQuater(OperatorType.GOTO, null, null, null, startLabel);
+            newQuater(OperatorType.LABEL, null, null, null, falseLabel);
+            whileLabelsList.pop();
+        }
+        // 'break' ';'
+        else if (stmt.child(0).isType(BREAK)) {
+            newQuater(OperatorType.GOTO, null, null, null, whileLabelsList.peek().second);
+        }
+        // 'continue' ';'
+        else if (stmt.child(0).isType(CONTINUE)) {
+            newQuater(OperatorType.GOTO, null, null, null, whileLabelsList.peek().first);
+        }
     }
 
-    // ans 是综合属性，表达式所得值的寄存器
+
     private VirtualReg EXPRESSION(Nonterminal exp) {
         assert exp.isType(_EXPRESSION_) || exp.isType(_CONST_EXPRESSION_);
         return ADD_EXPRESSION((Nonterminal) exp.child(0));
@@ -298,13 +321,14 @@ public class Generator {
             else if (unaryOp.child(0).isType(MINUS)) { // negate
                 VirtualReg ans = newReg();
                 newQuater(OperatorType.SUB, ans,
-                        zeroReg,
-                        UNARY_EXPRESSION((Nonterminal) exp.child(1)), null);
+                        zeroReg, UNARY_EXPRESSION((Nonterminal) exp.child(1)), null);
                 return ans;
             }
             else {
-                // todo '!'
-                return null;
+                VirtualReg ans = newReg();
+                newQuater(OperatorType.NOT, ans,
+                        UNARY_EXPRESSION((Nonterminal) exp.child(1)), null, null);
+                return ans;
             }
         }
     }
@@ -330,7 +354,13 @@ public class Generator {
                     .map(e -> EXPRESSION((Nonterminal) e))
                     .collect(Collectors.toList());
             VirtualReg linearOffset = getLinearOffset(var, offset);
-            newQuater(OperatorType.GET_ARRAY, ans, getVarReg(ident), linearOffset, null);
+            if (var.dimension == offset.size()) {
+                newQuater(OperatorType.GET_ARRAY, ans, getVarReg(ident), linearOffset, null);
+            }
+            else {
+                newQuater(OperatorType.ADD, ans, getVarReg(ident), linearOffset, null);
+                ans.isAddr = true;
+            }
         }
         else {
             newQuater(OperatorType.SET, ans, getVarReg(ident), null, null);
@@ -345,5 +375,74 @@ public class Generator {
         VirtualReg ans = newReg();
         newQuater(OperatorType.SET, ans, new InstNumber(inst), null, null);
         return ans;
+    }
+
+    private void CONDITION(Nonterminal cond, Label trueLabel, Label falseLabel) {
+        assert cond.isType(_CONDITION_);
+        LOGIC_OR_EXPRESSION((Nonterminal) cond.child(0), trueLabel, falseLabel);
+    }
+
+    private void LOGIC_OR_EXPRESSION(Nonterminal cond, Label trueLabel, Label falseLabel) {
+        assert cond.isType(_LOGIC_OR_EXPRESSION_);
+        if (cond.child(0).isType(_LOGIC_AND_EXPRESSION_)) {
+            LOGIC_AND_EXPRESSION((Nonterminal) cond.child(0), trueLabel, falseLabel);
+        }
+        else {
+            Label newFalseLabel = newLabel();
+            LOGIC_OR_EXPRESSION((Nonterminal) cond.child(0), trueLabel, newFalseLabel);
+            newQuater(OperatorType.LABEL, null, null, null, newFalseLabel);
+            LOGIC_AND_EXPRESSION((Nonterminal) cond.child(2), trueLabel, falseLabel);
+
+        }
+    }
+
+    private void LOGIC_AND_EXPRESSION(Nonterminal cond, Label trueLabel, Label falseLabel) {
+        assert cond.isType(_LOGIC_AND_EXPRESSION_);
+        VirtualReg condExpAns;
+        if (cond.child(0).isType(_EQUAL_EXPRESSION_)) {
+            condExpAns = EQUAL_EXPRESSION((Nonterminal) cond.child(0));
+        }
+        else {
+            Label newTrueLabel = newLabel();
+            LOGIC_AND_EXPRESSION((Nonterminal) cond.child(0), newTrueLabel, falseLabel);
+            newQuater(OperatorType.LABEL, null, null, null, newTrueLabel);
+            condExpAns = EQUAL_EXPRESSION((Nonterminal) cond.child(2));
+        }
+        newQuater(OperatorType.IF, null, condExpAns, null, trueLabel);
+        newQuater(OperatorType.GOTO, null, null, null, falseLabel);
+    }
+
+    private VirtualReg EQUAL_EXPRESSION(Nonterminal cond) {
+        assert cond.isType(_EQUAL_EXPRESSION_);
+        if (cond.child(0).isType(_RELATION_EXPRESSION_)) {
+            return RELATION_EXPRESSION((Nonterminal) cond.child(0));
+        }
+        else {
+            OperatorType op = cond.child(1).isType(EQUAL) ? OperatorType.EQ : OperatorType.NOT_EQ;
+            VirtualReg ans = newReg();
+            newQuater(op, ans,
+                    EQUAL_EXPRESSION((Nonterminal) cond.child(0)),
+                    RELATION_EXPRESSION((Nonterminal) cond.child(2)), null);
+            return ans;
+        }
+    }
+
+    private VirtualReg RELATION_EXPRESSION(Nonterminal cond) {
+        assert cond.isType(_RELATION_EXPRESSION_);
+        if (cond.child(0).isType(_ADD_EXPRESSION_)) {
+            return ADD_EXPRESSION((Nonterminal) cond.child(0));
+        }
+        else {
+            OperatorType op;
+            if (cond.child(1).isType(LESS)) op = OperatorType.LESS;
+            else if (cond.child(1).isType(LESS_EQUAL)) op = OperatorType.LESS_EQ;
+            else if (cond.child(1).isType(GREATER)) op = OperatorType.GREATER;
+            else op = OperatorType.GREATER_EQ;
+            VirtualReg ans = newReg();
+            newQuater(op, ans,
+                    RELATION_EXPRESSION((Nonterminal) cond.child(0)),
+                    ADD_EXPRESSION((Nonterminal) cond.child(2)), null);
+            return ans;
+        }
     }
 }

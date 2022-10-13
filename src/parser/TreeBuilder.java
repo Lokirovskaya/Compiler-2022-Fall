@@ -61,10 +61,10 @@ class TreeBuilder {
                         Nonterminal R = (Nonterminal) L.child(0);
                         List<TreeNode> OR = new ArrayList<>(L.children.subList(size - 2, size));
                         Nonterminal L_ = new Nonterminal(L.type);
-                        L_.children.add(R); // L'.left = R
+                        L_.children.add(R); // L'.first = R
                         L_.children.addAll(L.children.subList(1, size - 2)); // L'.right = {OR}'
                         L.children = new ArrayList<>();
-                        L.children.add(L_); // L.left = L'
+                        L.children.add(L_); // L.first = L'
                         L.children.addAll(OR); // L.right = OR
                         // set parent
                         for (TreeNode t : L.children) t.parent = L;

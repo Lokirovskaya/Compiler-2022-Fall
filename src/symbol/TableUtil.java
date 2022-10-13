@@ -46,7 +46,6 @@ public class TableUtil {
             if (p.isType(LEFT_BRACKET)) bracketCount++;
         }
         var.dimension = bracketCount;
-        var.volume = new Operand.VirtualReg[var.dimension];
         return var;
     }
 

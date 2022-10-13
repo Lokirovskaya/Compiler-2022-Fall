@@ -14,10 +14,8 @@ public abstract class Symbol {
         public boolean isConst;
         public int dimension; // 普通变量为 0
         public Operand.VirtualReg reg;
-        // 对于三维数组 int a[x][y][z]
-        // volume[0] = y*z; volume[1] = z; volume[2] = 1; x 是无用的，不需要计算
-        // 储存的是上述运算的运算结果 reg，事实上 volume[-1] == null
-        public Operand.VirtualReg[] volume;
+        // 第一维的长度，只在二维数组时有意义
+        public Operand.VirtualReg sizeOfLine;
 
         public boolean isArray() {
             return dimension > 0;
