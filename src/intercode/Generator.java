@@ -21,7 +21,7 @@ public class Generator {
     private final TreeNode syntaxTreeRoot;
     private final Map<Token, Symbol> identSymbolMap;
     private int regCount = 1;
-    private int labelCount =1;
+    private int labelCount = 1;
     private static final VirtualReg zeroReg = new VirtualReg(0);
     private final Stack<Pair<Label, Label>> whileLabelsList = new Stack<>();
 
@@ -31,6 +31,7 @@ public class Generator {
     }
 
     public InterCode generate() {
+        newQuater(OperatorType.COMMENT, null, null, null, new Label("# Inter Code #"));
         COMPILE_UNIT(syntaxTreeRoot);
         return inter;
     }
@@ -54,7 +55,7 @@ public class Generator {
     }
 
     private void newQuater(Quaternion.OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
-        inter.addQuater(new Quaternion(op, target, x1, x2, label));
+        inter.addLast(new Quaternion(op, target, x1, x2, label));
     }
 
     // 获得变量对应的寄存器

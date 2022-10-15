@@ -1,6 +1,10 @@
 package intercode;
 
-public class Quaternion {
+import util.NodeListNode;
+
+import java.util.Objects;
+
+public class Quaternion  {
     public OperatorType op;
     public Operand.VirtualReg target;
     public Operand x1, x2;
@@ -21,5 +25,6 @@ public class Quaternion {
         SET, GET_ARRAY, SET_ARRAY, LOAD_ADDR, // x=y, x=y[], x[]=y, x=&y
         FUNC, LABEL, GOTO, RETURN, RETURN_VOID, CALL, LOAD_RETURN, PUSH, PARAM, PARAM_ARRAY, ALLOC,
         GETINT, PRINT_STR, PRINT_INT, PRINT_CHAR,
+        COMMENT
     }
 }

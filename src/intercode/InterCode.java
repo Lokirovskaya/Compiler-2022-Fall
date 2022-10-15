@@ -1,39 +1,28 @@
 package intercode;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
+import util.NodeList;
+import util.NodeListNode;
 
-import static intercode.Operand.*;
+import java.io.IOException;
+import java.util.function.Consumer;
 
 public class InterCode {
-    private final Map<Integer, Integer> virtualRegMap = new HashMap<>();
-    public final LinkedList<Quaternion> list = new LinkedList<>();
+    private final NodeList<Quaternion> list = new NodeList<>();
 
-    public void output(String filename) {
+    public void output(String filename) throws IOException {
         ResultOutput.output(this, filename);
     }
 
-    void addQuater(Quaternion quater) {
-        if (quater.target != null)
-            virtualRegMap.putIfAbsent(quater.target.regID, null);
-        if (quater.x1 instanceof VirtualReg)
-            virtualRegMap.putIfAbsent(((VirtualReg) quater.x1).regID, null);
-        if (quater.x2 instanceof VirtualReg)
-            virtualRegMap.putIfAbsent(((VirtualReg) quater.x2).regID, null);
-        list.addLast(quater);
+    // delegations
+    public void addFirst(Quaternion q) {
+        list.addFirst(q);
     }
 
-    public Integer getRegValue(int regID) {
-        return virtualRegMap.get(regID);
+    public void addLast(Quaternion q) {
+        list.addLast(q);
     }
 
-    public void setRegValue(int regID, int value) {
-        virtualRegMap.replace(regID, value);
-    }
-
-    public void optimize() {
-        optimizer.ReduceConst.run(this);
-        optimizer.AssignRegister.run(this);
+    public void forEach(Consumer<NodeListNode<Quaternion>> func) {
+        list.forEach(func);
     }
 }

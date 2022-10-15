@@ -3,6 +3,7 @@ import intercode.Generator;
 import intercode.InterCode;
 import lexer.Lexer;
 import lexer.Token;
+import optimizer.Optimizer;
 import parser.Parser;
 import parser.TreeNode;
 import symbol.Symbol;
@@ -49,9 +50,8 @@ public class Compiler {
 
         Generator generator = new Generator(root, identSymbolMap);
         InterCode inter = generator.generate();
-
         inter.output("output/inter.txt");
-        inter.optimize();
+        Optimizer.Optimize(inter);
         inter.output("output/inter_opt.txt");
     }
 }
