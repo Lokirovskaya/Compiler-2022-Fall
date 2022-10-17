@@ -21,9 +21,9 @@ public class Generator {
     private final InterCode inter = new InterCode();
     private final TreeNode syntaxTreeRoot;
     private final Map<Token, Symbol> identSymbolMap;
-    private int regCount = 1;
-    private int labelCount = 1;
-    private static final VirtualReg zeroReg = new VirtualReg(0);
+    private static final VirtualReg returnReg = new VirtualReg(0, "RET");
+    private int regIdx = 1;
+    private int labelIdx = 1;
     private final Stack<Pair<Label, Label>> whileLabelsList = new Stack<>();
 
     public Generator(TreeNode syntaxTreeRoot, Map<Token, Symbol> identSymbolMap) {
@@ -32,7 +32,6 @@ public class Generator {
     }
 
     public InterCode generate() {
-        newQuater(OperatorType.COMMENT, null, null, null, new Label("# Inter Code #"));
         COMPILE_UNIT(syntaxTreeRoot);
         return inter;
     }
@@ -48,11 +47,11 @@ public class Generator {
     }
 
     private VirtualReg newReg() {
-        return new VirtualReg(regCount++);
+        return new VirtualReg(regIdx++);
     }
 
     private Label newLabel() {
-        return new Label("label_" + labelCount++);
+        return new Label("label_" + labelIdx++);
     }
 
     private void newQuater(Quaternion.OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
@@ -67,7 +66,7 @@ public class Generator {
         Symbol.Var var = getVar(varIdent);
         if (var.reg == null) {
             var.reg = newReg();
-            var.reg.name = var.name;
+            var.reg.name = var.name + '_' + var.selfTable.id;
             var.reg.declareConst = var.isConst;
             var.reg.isAddr = var.isArray();
         }
@@ -75,9 +74,9 @@ public class Generator {
     }
 
     // 获取多维数组调用的偏移量，若访问 a[x][y]，请传入 offset = {x,y}
-    private VirtualReg getLinearOffset(Symbol.Var array, List<VirtualReg> offset) {
+    private Operand getLinearOffset(Symbol.Var array, List<VirtualReg> offset) {
         assert array.isArray();
-        if (offset.size() == 0) return zeroReg;
+        if (offset.size() == 0) return new InstNumber(0);
         if (array.dimension == 1) return offset.get(0);
         else {
             // ans = x * a.sizeOfDim1 + y
@@ -249,7 +248,7 @@ public class Generator {
                         .filter(p -> p.isType(_EXPRESSION_))
                         .map(e -> EXPRESSION((Nonterminal) e))
                         .collect(Collectors.toList());
-                VirtualReg linearOffset = getLinearOffset(var, offset);
+                Operand linearOffset = getLinearOffset(var, offset);
                 newQuater(OperatorType.SET_ARRAY, getVarReg(ident), linearOffset, expAns, null);
             }
             else {
@@ -268,9 +267,9 @@ public class Generator {
         else if (stmt.child(0).isType(RETURN)) {
             if (stmt.child(1).isType(_EXPRESSION_)) {
                 VirtualReg expAns = EXPRESSION((Nonterminal) stmt.child(1));
-                newQuater(OperatorType.RETURN, null, expAns, null, null);
+                newQuater(OperatorType.SET, returnReg, expAns, null, null);
             }
-            else newQuater(OperatorType.RETURN_VOID, null, null, null, null);
+            newQuater(OperatorType.RETURN, null, null, null, null);
         }
         // 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
         else if (stmt.child(0).isType(IF)) {
@@ -312,6 +311,44 @@ public class Generator {
         // 'continue' ';'
         else if (stmt.child(0).isType(CONTINUE)) {
             newQuater(OperatorType.GOTO, null, null, null, whileLabelsList.peek().first);
+        }
+        // 'printf' '(' FormatString { ',' Exp } ')' ';'
+        else if (stmt.child(0).isType(PRINTF)) {
+            String formatTokenValue = ((Token) stmt.child(2)).value;
+            String format = formatTokenValue.substring(1, formatTokenValue.length() - 1); // 跳过前后双引号
+            List<VirtualReg> expList = stmt.children.stream()
+                    .filter(p -> p.isType(_EXPRESSION_))
+                    .map(e -> EXPRESSION((Nonterminal) e))
+                    .collect(Collectors.toList());
+            int expIdx = 0;
+            StringBuilder buffer = new StringBuilder();
+            Runnable printAndClearBuffer = () -> {
+                // 输出 buffer（如果非空），然后清空 buffer；如果 buffer 长度为 1，简化为输出单字符
+                if (buffer.length() > 0) {
+                    String str = buffer.toString();
+                    if (str.length() > 1) {
+                        VirtualReg strReg = newReg();
+                        strReg.isAddr = true;
+                        newQuater(OperatorType.ALLOC_STR, strReg, null, null, new Label(str));
+                        newQuater(OperatorType.PRINT_STR, null, strReg, null, null);
+                    }
+                    else {
+                        newQuater(OperatorType.PRINT_CHAR, null, new InstNumber(str.charAt(0)), null, null);
+                    }
+                    buffer.delete(0, buffer.length());
+                }
+            };
+            for (int i = 0; i < format.length(); i++) {
+                if (format.charAt(i) == '%') {
+                    // 输出 buffer，再输出一个数字
+                    assert format.charAt(i + 1) == 'd';
+                    i++;
+                    printAndClearBuffer.run();
+                    newQuater(OperatorType.PRINT_INT, null, expList.get(expIdx++), null, null);
+                }
+                else buffer.append(format.charAt(i));
+            }
+            printAndClearBuffer.run();
         }
     }
 
@@ -371,11 +408,7 @@ public class Generator {
                 }
             }
             newQuater(OperatorType.CALL, null, null, null, new Label(func.name));
-            if (!func.isVoid) {
-                VirtualReg ans = newReg();
-                newQuater(OperatorType.LOAD_RETURN, ans, null, null, null);
-                return ans;
-            }
+            if (!func.isVoid) return returnReg;
             else return null;
         }
         // UnaryExp → UnaryOp UnaryExp, UnaryOp → '+' | '−' | '!'
@@ -387,7 +420,7 @@ public class Generator {
             else if (unaryOp.child(0).isType(MINUS)) { // negate
                 VirtualReg ans = newReg();
                 newQuater(OperatorType.SUB, ans,
-                        zeroReg, UNARY_EXPRESSION((Nonterminal) exp.child(1)), null);
+                        new InstNumber(0), UNARY_EXPRESSION((Nonterminal) exp.child(1)), null);
                 return ans;
             }
             else {
@@ -411,7 +444,6 @@ public class Generator {
 
     private VirtualReg LEFT_VALUE_EXPRESSION(Nonterminal exp) {
         assert exp.isType(_LEFT_VALUE_);
-        VirtualReg ans = newReg();
         Token ident = (Token) exp.child(0);
         Symbol.Var var = getVar(ident);
         if (var.isArray()) {
@@ -419,19 +451,20 @@ public class Generator {
                     .filter(p -> p.isType(_EXPRESSION_))
                     .map(e -> EXPRESSION((Nonterminal) e))
                     .collect(Collectors.toList());
-            VirtualReg linearOffset = getLinearOffset(var, offset);
+            Operand linearOffset = getLinearOffset(var, offset);
+            VirtualReg arrAns = newReg();
+            // 完全取地址
             if (var.dimension == offset.size()) {
-                newQuater(OperatorType.GET_ARRAY, ans, getVarReg(ident), linearOffset, null);
+                newQuater(OperatorType.GET_ARRAY, arrAns, getVarReg(ident), linearOffset, null);
             }
+            // 不完全取地址，返回仍是一个地址
             else {
-                newQuater(OperatorType.ADD, ans, getVarReg(ident), linearOffset, null);
-                ans.isAddr = true;
+                newQuater(OperatorType.ADD, arrAns, getVarReg(ident), linearOffset, null);
+                arrAns.isAddr = true;
             }
+            return arrAns;
         }
-        else {
-            newQuater(OperatorType.SET, ans, getVarReg(ident), null, null);
-        }
-        return ans;
+        else return getVarReg(ident);
     }
 
     private VirtualReg NUMBER(Nonterminal exp) {

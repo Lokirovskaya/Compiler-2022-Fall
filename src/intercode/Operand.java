@@ -10,6 +10,11 @@ public abstract class Operand {
         public VirtualReg(int r) {
             this.regID = r;
         }
+
+        public VirtualReg(int r, String name) {
+            this.regID = r;
+            this.name = name;
+        }
     }
 
     public static class InstNumber extends Operand {
@@ -22,7 +27,6 @@ public abstract class Operand {
 
     public static class Label extends Operand {
         public String name;
-        public int ref = 0;
 
         public Label(String s) {
             this.name = s;

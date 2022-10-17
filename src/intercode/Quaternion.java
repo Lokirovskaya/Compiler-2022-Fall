@@ -1,17 +1,12 @@
 package intercode;
 
-import util.NodeListNode;
-
-import java.util.Objects;
-
-public class Quaternion  {
+public class Quaternion {
     public OperatorType op;
     public Operand.VirtualReg target;
     public Operand x1, x2;
     public Operand.Label label;
 
     public Quaternion(OperatorType op, Operand.VirtualReg target, Operand x1, Operand x2, Operand.Label label) {
-        assert target == null || target.regID != 0; // cannot write $0
         this.op = op;
         this.target = target;
         this.x1 = x1;
@@ -20,11 +15,10 @@ public class Quaternion  {
     }
 
     public enum OperatorType {
-        ADD, SUB, MULT, DIV, MOD,
-        NOT, EQ, NOT_EQ, LESS, LESS_EQ, GREATER, GREATER_EQ, IF, IF_NOT,
-        SET, GET_ARRAY, SET_ARRAY, LOAD_ADDR, // x=y, x=y[], x[]=y, x=&y
-        FUNC, LABEL, GOTO, RETURN, RETURN_VOID, CALL, LOAD_RETURN, PUSH, PARAM, PARAM_ARRAY, ALLOC,
-        GETINT, PRINT_STR, PRINT_INT, PRINT_CHAR,
-        COMMENT
+        ADD, SUB, MULT, DIV, MOD, NOT, EQ, NOT_EQ, LESS, LESS_EQ, GREATER, GREATER_EQ,
+        IF, IF_NOT, GOTO, FUNC, CALL, RETURN, EXIT,
+        SET, GET_ARRAY, SET_ARRAY, LOAD_ADDR,
+        LABEL, PUSH, PARAM, PARAM_ARRAY, ALLOC, ALLOC_STR,
+        GETINT, PRINT_STR, PRINT_INT, PRINT_CHAR
     }
 }
