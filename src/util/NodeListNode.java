@@ -1,34 +1,52 @@
 package util;
 
+// 允许在循环中删除节点的链表
+// 循环中删除下一节点以及之后的节点是安全的，因此提供给用户的是下一节点的信息
+// 保证 this.next 不为空，详见 forEach 的实现
 public class NodeListNode<E> {
     private E data;
     NodeListNode<E> prev, next;
+    // 下一个节点是否被删除
+    // 如果是，则在 forEach 进入下一次循环时，不要移动 node，避免漏掉一个节点
+    boolean nextDeleted = false;
+
+    public E get() {
+        return this.next.getSelf();
+    }
 
     public E get(int offset) {
-        if (offset == 0) return data;
-        NodeListNode<E> node = this.nodeOffset(offset);
-        return node == null ? null : node.data;
+        if (offset == 0) return this.get();
+        NodeListNode<E> node = this.next.nodeOffset(offset);
+        return node == null ? null : node.getSelf();
     }
 
-    private NodeListNode<E> nodeOffset(int offset) {
-        NodeListNode<E> n = this;
-        if (offset == 0) return this;
-        else if (offset > 0) {
-            for (int i = 0; i < offset; i++) {
-                if (n.next == null) return null;
-                n = n.next;
-            }
-        }
-        else {
-            for (int i = 0; i < -offset; i++) {
-                if (n.prev == null) return null;
-                n = n.prev;
-            }
-        }
-        return n;
+//    void insertNext(E e) {
+//        this.next.insertNextSelf(e);
+//    }
+//
+//    void insertPrev(E e) {
+//        this.next.insertPrevSelf(e);
+//    }
+
+    public void delete() {
+        nextDeleted = true;
+        this.next.deleteSelf();
     }
 
-    public void insertNext(E e) {
+    public void delete(int offset) {
+        nextDeleted = true;
+        if (offset == 0) this.delete();
+        NodeListNode<E> node = this.next.nodeOffset(offset);
+        if (node != null) node.deleteSelf();
+    }
+
+    // 以下方法对用户隐藏 //
+
+    E getSelf() {
+        return data;
+    }
+
+    void insertNextSelf(E e) {
         NodeListNode<E> p = new NodeListNode<>();
         p.data = e;
         p.prev = this;
@@ -37,28 +55,26 @@ public class NodeListNode<E> {
         p.next.prev = p;
     }
 
-    public void insertPrev(E e) {
-        this.prev.insertNext(e);
+    void insertPrevSelf(E e) {
+        this.prev.insertNextSelf(e);
     }
 
-    // 在 forEach 循环中删除 this 是危险的，循环中只允许调用 deleteNext 或 deletePrev
-    public void delete() {
+    void deleteSelf() {
         this.prev.next = this.next;
         this.next.prev = this.prev;
         this.prev = this.next = null;
         this.data = null;
     }
 
-    public void deleteNext() {
-        this.next.delete();
-    }
-
-    public void deletePrev() {
-        this.prev.delete();
-    }
-
-    public void replace(int offset, E e) {
-        NodeListNode<E> node = this.nodeOffset(offset);
-        if (node != null) node.data = e;
+    private NodeListNode<E> nodeOffset(int offset) {
+        if (offset == 0) return this;
+        else {
+            NodeListNode<E> n = this;
+            for (int i = 0; i < offset; i++) {
+                if (n.next == null) return null;
+                n = n.next;
+            }
+            return n;
+        }
     }
 }
