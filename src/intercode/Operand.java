@@ -1,7 +1,5 @@
 package intercode;
 
-import java.util.Objects;
-
 public abstract class Operand {
     public static class VirtualReg extends Operand {
         public int regID, realReg;
@@ -24,17 +22,10 @@ public abstract class Operand {
 
     public static class Label extends Operand {
         public String name;
+        public int ref = 0;
 
         public Label(String s) {
             this.name = s;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Label label = (Label) o;
-            return Objects.equals(name, label.name);
         }
     }
 

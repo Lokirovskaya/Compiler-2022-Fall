@@ -14,8 +14,7 @@ public abstract class Symbol {
         public boolean isConst;
         public int dimension; // 普通变量为 0
         public Operand.VirtualReg reg;
-        // 第一维的长度，只在二维数组时有意义
-        public Operand.VirtualReg sizeOfLine;
+        public Operand.VirtualReg sizeOfDim1, sizeOfDim2;
 
         public boolean isArray() {
             return dimension > 0;

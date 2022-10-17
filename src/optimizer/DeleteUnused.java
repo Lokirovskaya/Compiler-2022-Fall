@@ -16,13 +16,13 @@ class DeleteUnused {
     private static void deleteUnusedLabel(InterCode inter) {
         Set<Operand.Label> labelRef = new HashSet<>();
         inter.forEach(p -> {
-            if (p.get(0).op == IF || p.get(0).op == IF_NOT || p.get(0).op == GOTO) {
-                labelRef.add(p.get(0).label);
+            if (p.get().op == IF || p.get().op == IF_NOT || p.get().op == GOTO) {
+                labelRef.add(p.get().label);
             }
         });
         inter.forEach(p -> {
-            if (p.get(1) != null && p.get(1).op == LABEL) {
-                if (!labelRef.contains(p.get(1).label)) p.deleteNext();
+            if (p.get().op == LABEL) {
+                if (!labelRef.contains(p.get().label)) p.delete();
             }
         });
     }

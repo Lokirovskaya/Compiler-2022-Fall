@@ -38,7 +38,7 @@ public class Compiler {
 
         Parser parser = new Parser(tokenList);
         TreeNode root = parser.parse();
-        if (DEBUG) parser.output("output/parser.txt", true);
+        if (DEBUG) parser.output("output/parser.txt", false);
 
         TableBuilder tableBuilder = new TableBuilder(root);
         Map<Token, Symbol> identSymbolMap = tableBuilder.build();

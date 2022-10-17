@@ -7,6 +7,7 @@ import parser.TreeNode;
 import symbol.Symbol;
 import util.Pair;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
@@ -79,9 +80,9 @@ public class Generator {
         if (offset.size() == 0) return zeroReg;
         if (array.dimension == 1) return offset.get(0);
         else {
-            // ans = x * a.sizeOfLine + y
+            // ans = x * a.sizeOfDim1 + y
             VirtualReg multAns = newReg();
-            newQuater(OperatorType.MULT, multAns, offset.get(0), array.sizeOfLine, null);
+            newQuater(OperatorType.MULT, multAns, offset.get(0), array.sizeOfDim1, null);
             if (offset.size() == 1) return multAns; // 不完全取地址
             else {
                 VirtualReg ans = newReg();
@@ -119,8 +120,17 @@ public class Generator {
         Symbol.Var var = getVar(ident);
         if (var.isArray()) {
             // Ident '[' ConstExp ']' '[' ConstExp ']'
-            if (var.dimension == 2) {
-                var.sizeOfLine = EXPRESSION((Nonterminal) def.child(5));
+            VirtualReg arrayReg = getVarReg(ident);
+            if (var.dimension == 1) {
+                var.sizeOfDim1 = EXPRESSION((Nonterminal) def.child(2));
+                newQuater(OperatorType.ALLOC, arrayReg, var.sizeOfDim1, null, null);
+            }
+            else if (var.dimension == 2) {
+                var.sizeOfDim1 = EXPRESSION((Nonterminal) def.child(5));
+                var.sizeOfDim2 = EXPRESSION((Nonterminal) def.child(2));
+                VirtualReg fullSize = newReg();
+                newQuater(OperatorType.MULT, fullSize, var.sizeOfDim1, var.sizeOfDim2, null);
+                newQuater(OperatorType.ALLOC, arrayReg, fullSize, null, null);
             }
         }
         // if def has an init value
@@ -133,9 +143,31 @@ public class Generator {
     // target 是继承属性，被赋值的寄存器
     private void VAR_INIT_VALUE(Nonterminal init, VirtualReg target) {
         assert init.isType(_VAR_INIT_VALUE_) || init.isType(_CONST_INIT_VALUE_);
-        if (init.child(0).isType(_EXPRESSION_) || init.child(0).isType(_CONST_EXPRESSION_)) {
+        if (!target.isAddr) {
             VirtualReg expAns = EXPRESSION((Nonterminal) init.child(0));
             newQuater(OperatorType.SET, target, expAns, null, null);
+        }
+        else {
+            List<VirtualReg> initExpList = new ArrayList<>();
+            findChildExpressions(init, initExpList);
+            for (int i = 0; i < initExpList.size(); i++) {
+                newQuater(OperatorType.SET_ARRAY, target, new InstNumber(i), initExpList.get(i), null);
+            }
+        }
+    }
+
+    // InitVal → Exp | '{' [ InitVal { ',' InitVal } ] '}'
+    // 前序遍历找出此递归文法的所有子 Exp，它是数组的从左到右的初值
+    private void findChildExpressions(Nonterminal p, List<VirtualReg> ans) {
+        assert p.isType(_VAR_INIT_VALUE_) || p.isType(_CONST_INIT_VALUE_);
+        for (TreeNode child : p.children) {
+            if (child.isType(_EXPRESSION_)) {
+                ans.add(EXPRESSION((Nonterminal) child));
+                return;
+            }
+            else if (child.isType(_VAR_INIT_VALUE_) || child.isType(_CONST_INIT_VALUE_)) {
+                findChildExpressions((Nonterminal) child, ans);
+            }
         }
     }
 
@@ -145,11 +177,37 @@ public class Generator {
             newQuater(OperatorType.FUNC, null, null, null, new Label("main"));
         }
         else {
+            // FuncDef → FuncType Ident '(' [FuncFParams] ')' Block
             Symbol.Function func = getFunc((Token) def.child(1));
             newQuater(OperatorType.FUNC, null, null, null, new Label(func.name));
-            // todo: params
+            if (def.child(3).isType(_FUNCTION_DEFINE_PARAM_LIST_)) {
+                for (TreeNode p : ((Nonterminal) def.child(3)).children) {
+                    if (p.isType(_FUNCTION_DEFINE_PARAM_))
+                        FUNCTION_DEFINE_PARAM((Nonterminal) p);
+                }
+            }
         }
         BLOCK(def.child(def.children.size() - 1));
+    }
+
+    private void FUNCTION_DEFINE_PARAM(Nonterminal paramDef) {
+        assert paramDef.isType(_FUNCTION_DEFINE_PARAM_);
+        Token ident = (Token) paramDef.child(1);
+        Symbol.Var param = getVar(ident);
+        VirtualReg paramReg = getVarReg(ident);
+        if (param.isArray()) {
+            // BType Ident '[' ']' '[' ConstExp ']'
+            if (param.dimension == 1) {
+                newQuater(OperatorType.PARAM, null, paramReg, null, null);
+            }
+            else if (param.dimension == 2) {
+                param.sizeOfDim1 = EXPRESSION((Nonterminal) paramDef.child(5));
+                newQuater(OperatorType.PARAM, null, paramReg, null, null);
+            }
+        }
+        else {
+            newQuater(OperatorType.PARAM, null, paramReg, null, null);
+        }
     }
 
     private void BLOCK(TreeNode _p) {
@@ -300,11 +358,18 @@ public class Generator {
         if (exp.child(0).isType(_PRIMARY_EXPRESSION_)) {
             return PRIMARY_EXPRESSION((Nonterminal) exp.child(0));
         }
-        // function call
+        // function call, UnaryExp → Ident '(' [FuncRParams] ')'
         else if (exp.child(0).isType(IDENTIFIER)) {
             Token ident = (Token) exp.child(0);
             Symbol.Function func = getFunc(ident);
-            // todo: params
+            if (exp.child(2).isType(_FUNCTION_CALL_PARAM_LIST_)) {
+                for (TreeNode p : ((Nonterminal) exp.child(2)).children) {
+                    if (p.isType(_EXPRESSION_)) {
+                        VirtualReg paramAns = EXPRESSION((Nonterminal) p);
+                        newQuater(OperatorType.PUSH, null, paramAns, null, null);
+                    }
+                }
+            }
             newQuater(OperatorType.CALL, null, null, null, new Label(func.name));
             if (!func.isVoid) {
                 VirtualReg ans = newReg();
