@@ -91,6 +91,11 @@ public class Parser {
         treeBuilder.moveUp();
     }
 
+    // Expression 的头符号集
+    private boolean isFirstTokenOfExpression(Token.TokenType t) {
+        return t == IDENTIFIER || t == PLUS || t == MINUS || t == NOT || t == LEFT_PAREN || t == INT_CONST;
+    }
+
     // Parsing Begin! //
 
     private void COMPILE_UNIT() {
@@ -345,7 +350,7 @@ public class Parser {
         // 'return' [Exp] ';'
         else if (tokenReader.read() == RETURN) {
             consume(RETURN);
-            if (tokenReader.read() != SEMICOLON)
+            if (isFirstTokenOfExpression(tokenReader.read()))
                 EXPRESSION();
             consume(SEMICOLON);
         }
@@ -427,12 +432,10 @@ public class Parser {
     private void UNARY_EXPRESSION() {
         createNonterminal(_UNARY_EXPRESSION_);
         // Ident '(' [FuncRParams] ')'
-        Function<Token.TokenType, Boolean> isFirstTokenOfExpression =
-                (type) -> type == IDENTIFIER || type == PLUS || type == MINUS || type == NOT || type == LEFT_PAREN || type == INT_CONST;
         if (tokenReader.read() == IDENTIFIER && tokenReader.read(1) == LEFT_PAREN) {
             consume(IDENTIFIER);
             consume(LEFT_PAREN);
-            if (isFirstTokenOfExpression.apply(tokenReader.read())) {
+            if (isFirstTokenOfExpression(tokenReader.read())) {
                 FUNCTION_CALL_PARAM_LIST();
             }
             consume(RIGHT_PAREN);
