@@ -1,13 +1,13 @@
 package symbol;
 
-import intercode.Operand;
 import lexer.Token;
 import parser.Nonterminal;
 import parser.TreeNode;
 
 import java.util.List;
 
-import static lexer.Token.TokenType.*;
+import static lexer.Token.TokenType.LEFT_BRACKET;
+import static lexer.Token.TokenType.VOID;
 import static parser.Nonterminal.NonterminalType.*;
 
 // 提供一些建符号表和错误处理的实用程序类

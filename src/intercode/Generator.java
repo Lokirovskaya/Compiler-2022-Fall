@@ -74,7 +74,7 @@ public class Generator {
     }
 
     // 获取多维数组调用的偏移量，若访问 a[x][y]，请传入 offset = {x,y}
-    private Operand getLinearOffset(Symbol.Var array, List<VirtualReg> offset) {
+    private Operand getLinearOffset(Symbol.Var array, List<Operand> offset) {
         assert array.isArray();
         if (offset.size() == 0) return new InstNumber(0);
         if (array.dimension == 1) return offset.get(0);
@@ -143,11 +143,11 @@ public class Generator {
     private void VAR_INIT_VALUE(Nonterminal init, VirtualReg target) {
         assert init.isType(_VAR_INIT_VALUE_) || init.isType(_CONST_INIT_VALUE_);
         if (!target.isAddr) {
-            VirtualReg expAns = EXPRESSION((Nonterminal) init.child(0));
+            Operand expAns = EXPRESSION((Nonterminal) init.child(0));
             newQuater(OperatorType.SET, target, expAns, null, null);
         }
         else {
-            List<VirtualReg> initExpList = new ArrayList<>();
+            List<Operand> initExpList = new ArrayList<>();
             findChildExpressions(init, initExpList);
             for (int i = 0; i < initExpList.size(); i++) {
                 newQuater(OperatorType.SET_ARRAY, target, new InstNumber(i), initExpList.get(i), null);
@@ -157,7 +157,7 @@ public class Generator {
 
     // InitVal → Exp | '{' [ InitVal { ',' InitVal } ] '}'
     // 前序遍历找出此递归文法的所有子 Exp，它是数组的从左到右的初值
-    private void findChildExpressions(Nonterminal p, List<VirtualReg> ans) {
+    private void findChildExpressions(Nonterminal p, List<Operand> ans) {
         assert p.isType(_VAR_INIT_VALUE_) || p.isType(_CONST_INIT_VALUE_);
         for (TreeNode child : p.children) {
             if (child.isType(_EXPRESSION_)) {
@@ -232,19 +232,19 @@ public class Generator {
         assert stmt.isType(_STATEMENT_);
         // LVal '=' Exp ';' |  LVal '=' 'getint''('')'';'
         if (stmt.child(0).isType(_LEFT_VALUE_)) {
-            VirtualReg expAns;
+            Operand expAns;
             if (stmt.child(2).isType(_EXPRESSION_)) {
                 expAns = EXPRESSION((Nonterminal) stmt.child(2));
             }
             else { // getint exp
                 expAns = newReg();
-                newQuater(OperatorType.GETINT, expAns, null, null, null);
+                newQuater(OperatorType.GETINT, (VirtualReg) expAns, null, null, null);
             }
             Nonterminal leftValue = (Nonterminal) stmt.child(0);
             Token ident = (Token) leftValue.child(0);
             Symbol.Var var = getVar(ident);
             if (var.isArray()) {
-                List<VirtualReg> offset = leftValue.children.stream()
+                List<Operand> offset = leftValue.children.stream()
                         .filter(p -> p.isType(_EXPRESSION_))
                         .map(e -> EXPRESSION((Nonterminal) e))
                         .collect(Collectors.toList());
@@ -257,7 +257,7 @@ public class Generator {
         }
         // [Exp] ';'
         else if (stmt.child(0).isType(_EXPRESSION_)) {
-            EXPRESSION((Nonterminal) stmt.child(0));
+            EXPRESSION((Nonterminal) stmt.child(0)); // ans 被丢弃
         }
         // Block
         else if (stmt.child(0).isType(_BLOCK_)) {
@@ -266,7 +266,7 @@ public class Generator {
         // 'return' [Exp] ';'
         else if (stmt.child(0).isType(RETURN)) {
             if (stmt.child(1).isType(_EXPRESSION_)) {
-                VirtualReg expAns = EXPRESSION((Nonterminal) stmt.child(1));
+                Operand expAns = EXPRESSION((Nonterminal) stmt.child(1));
                 newQuater(OperatorType.SET, returnReg, expAns, null, null);
             }
             newQuater(OperatorType.RETURN, null, null, null, null);
@@ -316,7 +316,7 @@ public class Generator {
         else if (stmt.child(0).isType(PRINTF)) {
             String formatTokenValue = ((Token) stmt.child(2)).value;
             String format = formatTokenValue.substring(1, formatTokenValue.length() - 1); // 跳过前后双引号
-            List<VirtualReg> expList = stmt.children.stream()
+            List<Operand> expList = stmt.children.stream()
                     .filter(p -> p.isType(_EXPRESSION_))
                     .map(e -> EXPRESSION((Nonterminal) e))
                     .collect(Collectors.toList());
@@ -352,13 +352,12 @@ public class Generator {
         }
     }
 
-
-    private VirtualReg EXPRESSION(Nonterminal exp) {
+    private Operand EXPRESSION(Nonterminal exp) {
         assert exp.isType(_EXPRESSION_) || exp.isType(_CONST_EXPRESSION_);
         return ADD_EXPRESSION((Nonterminal) exp.child(0));
     }
 
-    private VirtualReg ADD_EXPRESSION(Nonterminal exp) {
+    private Operand ADD_EXPRESSION(Nonterminal exp) {
         assert exp.isType(_ADD_EXPRESSION_);
         if (exp.child(0).isType(_MULTIPLY_EXPRESSION_))
             return MULTIPLY_EXPRESSION((Nonterminal) exp.child(0));
@@ -372,7 +371,7 @@ public class Generator {
         }
     }
 
-    private VirtualReg MULTIPLY_EXPRESSION(Nonterminal exp) {
+    private Operand MULTIPLY_EXPRESSION(Nonterminal exp) {
         assert exp.isType(_MULTIPLY_EXPRESSION_);
         if (exp.child(0).isType(_UNARY_EXPRESSION_)) {
             return UNARY_EXPRESSION((Nonterminal) exp.child(0));
@@ -390,7 +389,7 @@ public class Generator {
         }
     }
 
-    private VirtualReg UNARY_EXPRESSION(Nonterminal exp) {
+    private Operand UNARY_EXPRESSION(Nonterminal exp) {
         assert exp.isType(_UNARY_EXPRESSION_);
         if (exp.child(0).isType(_PRIMARY_EXPRESSION_)) {
             return PRIMARY_EXPRESSION((Nonterminal) exp.child(0));
@@ -402,7 +401,7 @@ public class Generator {
             if (exp.child(2).isType(_FUNCTION_CALL_PARAM_LIST_)) {
                 for (TreeNode p : ((Nonterminal) exp.child(2)).children) {
                     if (p.isType(_EXPRESSION_)) {
-                        VirtualReg paramAns = EXPRESSION((Nonterminal) p);
+                        Operand paramAns = EXPRESSION((Nonterminal) p);
                         newQuater(OperatorType.PUSH, null, paramAns, null, null);
                     }
                 }
@@ -432,7 +431,7 @@ public class Generator {
         }
     }
 
-    private VirtualReg PRIMARY_EXPRESSION(Nonterminal exp) {
+    private Operand PRIMARY_EXPRESSION(Nonterminal exp) {
         assert exp.isType(_PRIMARY_EXPRESSION_);
         if (exp.child(0).isType(LEFT_PAREN))
             return EXPRESSION((Nonterminal) exp.child(1));
@@ -442,12 +441,12 @@ public class Generator {
             return NUMBER((Nonterminal) exp.child(0));
     }
 
-    private VirtualReg LEFT_VALUE_EXPRESSION(Nonterminal exp) {
+    private Operand LEFT_VALUE_EXPRESSION(Nonterminal exp) {
         assert exp.isType(_LEFT_VALUE_);
         Token ident = (Token) exp.child(0);
         Symbol.Var var = getVar(ident);
         if (var.isArray()) {
-            List<VirtualReg> offset = exp.children.stream()
+            List<Operand> offset = exp.children.stream()
                     .filter(p -> p.isType(_EXPRESSION_))
                     .map(e -> EXPRESSION((Nonterminal) e))
                     .collect(Collectors.toList());
@@ -467,13 +466,11 @@ public class Generator {
         else return getVarReg(ident);
     }
 
-    private VirtualReg NUMBER(Nonterminal exp) {
+    private Operand NUMBER(Nonterminal exp) {
         assert exp.isType(_NUMBER_);
         Token number = (Token) exp.child(0);
         int inst = Integer.parseInt(number.value);
-        VirtualReg ans = newReg();
-        newQuater(OperatorType.SET, ans, new InstNumber(inst), null, null);
-        return ans;
+        return new InstNumber(inst);
     }
 
     private void CONDITION(Nonterminal cond, Label trueLabel, Label falseLabel) {
@@ -497,7 +494,7 @@ public class Generator {
 
     private void LOGIC_AND_EXPRESSION(Nonterminal cond, Label trueLabel, Label falseLabel) {
         assert cond.isType(_LOGIC_AND_EXPRESSION_);
-        VirtualReg condExpAns;
+        Operand condExpAns;
         if (cond.child(0).isType(_EQUAL_EXPRESSION_)) {
             condExpAns = EQUAL_EXPRESSION((Nonterminal) cond.child(0));
         }
@@ -511,7 +508,7 @@ public class Generator {
         newQuater(OperatorType.GOTO, null, null, null, falseLabel);
     }
 
-    private VirtualReg EQUAL_EXPRESSION(Nonterminal cond) {
+    private Operand EQUAL_EXPRESSION(Nonterminal cond) {
         assert cond.isType(_EQUAL_EXPRESSION_);
         if (cond.child(0).isType(_RELATION_EXPRESSION_)) {
             return RELATION_EXPRESSION((Nonterminal) cond.child(0));
@@ -526,7 +523,7 @@ public class Generator {
         }
     }
 
-    private VirtualReg RELATION_EXPRESSION(Nonterminal cond) {
+    private Operand RELATION_EXPRESSION(Nonterminal cond) {
         assert cond.isType(_RELATION_EXPRESSION_);
         if (cond.child(0).isType(_ADD_EXPRESSION_)) {
             return ADD_EXPRESSION((Nonterminal) cond.child(0));

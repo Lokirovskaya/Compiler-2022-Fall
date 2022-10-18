@@ -14,7 +14,7 @@ public abstract class Symbol {
         public boolean isConst;
         public int dimension; // 普通变量为 0
         public Operand.VirtualReg reg;
-        public Operand.VirtualReg sizeOfDim1, sizeOfDim2;
+        public Operand sizeOfDim1, sizeOfDim2;
 
         public boolean isArray() {
             return dimension > 0;

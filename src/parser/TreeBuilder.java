@@ -31,10 +31,6 @@ class TreeBuilder {
         return root;
     }
 
-    Nonterminal getCurrent() {
-        return current;
-    }
-
     // 将消除的左递归在树上复原
     // 只针对 L ::= R{OR} 还原为 L ::= R | LOR
     //     L             L
