@@ -69,12 +69,8 @@ public class Parser {
                 break;
             }
         }
-        if (match) {
-            treeBuilder.addNode(token);
-        }
-        else {
-            System.err.printf("Unexpected token '%s' at line %d, expect %s and others\n", token.value, token.lineNumber, judges[0].name());
-        }
+        if (match) treeBuilder.addNode(token);
+        else System.err.printf("Unexpected token '%s' at line %d, expect %s and others\n", token.value, token.lineNumber, judges[0].name());
         tokenReader.next();
     }
 
@@ -364,7 +360,7 @@ public class Parser {
                 consume(SEMICOLON);
             }
             // 先进行一遍 Exp 的解析，因为 LVal ∈ Exp，所以总是能解析掉第一个非终结符
-            // 再看它的后面一个符号，是 '=' 就放弃这次 Exp 的解析（当前节点的所有子树），进入前两个分支
+            // 再看它的后面一个符号，是 '=' 就放弃这次 Exp 的解析（当前节点的所有子树），进入前两个分支（赋值语句）
             // 否则，保留之前的 Exp 的解析，下一个符号必须是分号，否则报错
             else {
                 tokenReader.makeCheckpoint();
@@ -390,20 +386,6 @@ public class Parser {
                 else consume(SEMICOLON);
             }
         }
-//        // LVal '=' 'getint' '(' ')' ';'
-//        else if (isGetint) {
-//
-//        }
-//        // LVal '=' Exp ';'
-//        else if (isAssign) {
-
-//        }
-//        // [Exp] ';'
-//        else {
-//            if (tokenReader.read() != SEMICOLON)
-//                EXPRESSION();
-//            consume(SEMICOLON);
-//        }
         endNonterminal();
     }
 
