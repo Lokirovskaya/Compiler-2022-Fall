@@ -3,6 +3,7 @@ import intercode.Generator;
 import intercode.InterCode;
 import lexer.Lexer;
 import lexer.Token;
+import mips.MipsTranslator;
 import optimizer.Optimizer;
 import parser.Parser;
 import parser.TreeNode;
@@ -27,31 +28,32 @@ public class Compiler {
         }
     }
 
-    private static final boolean DEBUG = true;
-
     static void compile(String code) throws IOException {
         Lexer lexer = new Lexer(code);
         List<Token> tokenList = lexer.getTokens();
-        if (DEBUG) lexer.output("output/lexer.txt");
+        // lexer.output("_lexer.txt");
 
         ErrorList.init();
 
         Parser parser = new Parser(tokenList);
         TreeNode root = parser.parse();
-        if (DEBUG) parser.output("output/parser.txt", false);
+         parser.output("output.txt", false);
 
         TableBuilder tableBuilder = new TableBuilder(root);
         Map<Token, Symbol> identSymbolMap = tableBuilder.build();
-        if (DEBUG) tableBuilder.output("output/table.txt");
+        // tableBuilder.output("_table.txt");
 
-        if (DEBUG) ErrorList.alert();
-        // ErrorList.output("error.txt");
+        ErrorList.alert();
+        // ErrorList.output("_error.txt");
         if (ErrorList.size() > 0) return;
 
         Generator generator = new Generator(root, identSymbolMap);
         InterCode inter = generator.generate();
-        inter.output("output/inter.txt");
+        inter.output("inter.txt");
         Optimizer.Optimize(inter);
-        inter.output("output/inter_opt.txt");
+        inter.output("inter_opt.txt");
+
+        MipsTranslator translator = new MipsTranslator(inter);
+        translator.translate();
     }
 }

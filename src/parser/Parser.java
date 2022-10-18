@@ -5,7 +5,6 @@ import lexer.Token;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static error.Error.ErrorType.*;
@@ -309,19 +308,6 @@ public class Parser {
 
     private void STATEMENT() {
         createNonterminal(_STATEMENT_);
-        // 一直读到分号为止，如果之间发现了 ASSIGN，就是赋值语句
-        int i = 0;
-        boolean isAssign = false, isGetint = false;
-        while (tokenReader.read(i) != SEMICOLON && tokenReader.read(i) != NULL) {
-            if (tokenReader.read(i) == ASSIGN) {
-                isAssign = true;
-                if (tokenReader.read(i + 1) == GETINT)
-                    isGetint = true;
-                break;
-            }
-            i++;
-        }
-
         // 'if' '(' Cond ')' Stmt [ 'else' Stmt ]
         if (tokenReader.read() == IF) {
             consume(IF);
@@ -371,27 +357,53 @@ public class Parser {
             BLOCK();
         }
         // LVal '=' 'getint' '(' ')' ';'
-        else if (isGetint) {
-            LEFT_VALUE();
-            consume(ASSIGN);
-            consume(GETINT);
-            consume(LEFT_PAREN);
-            consume(RIGHT_PAREN);
-            consume(SEMICOLON);
-        }
         // LVal '=' Exp ';'
-        else if (isAssign) {
-            LEFT_VALUE();
-            consume(ASSIGN);
-            EXPRESSION();
-            consume(SEMICOLON);
-        }
         // [Exp] ';'
         else {
-            if (tokenReader.read() != SEMICOLON)
+            if (tokenReader.read() == SEMICOLON) {
+                consume(SEMICOLON);
+            }
+            // 先进行一遍 Exp 的解析，因为 LVal ∈ Exp，所以总是能解析掉第一个非终结符
+            // 再看它的后面一个符号，是 '=' 就放弃这次 Exp 的解析（当前节点的所有子树），进入前两个分支
+            // 否则，保留之前的 Exp 的解析，下一个符号必须是分号，否则报错
+            else {
+                tokenReader.makeCheckpoint();
                 EXPRESSION();
-            consume(SEMICOLON);
+                if (tokenReader.read() == ASSIGN && tokenReader.read(1) == GETINT) {
+                    treeBuilder.getCurrent().children.clear();
+                    tokenReader.loadCheckpoint();
+                    LEFT_VALUE();
+                    consume(ASSIGN);
+                    consume(GETINT);
+                    consume(LEFT_PAREN);
+                    consume(RIGHT_PAREN);
+                    consume(SEMICOLON);
+                }
+                else if (tokenReader.read() == ASSIGN) {
+                    treeBuilder.getCurrent().children.clear();
+                    tokenReader.loadCheckpoint();
+                    LEFT_VALUE();
+                    consume(ASSIGN);
+                    EXPRESSION();
+                    consume(SEMICOLON);
+                }
+                else consume(SEMICOLON);
+            }
         }
+//        // LVal '=' 'getint' '(' ')' ';'
+//        else if (isGetint) {
+//
+//        }
+//        // LVal '=' Exp ';'
+//        else if (isAssign) {
+
+//        }
+//        // [Exp] ';'
+//        else {
+//            if (tokenReader.read() != SEMICOLON)
+//                EXPRESSION();
+//            consume(SEMICOLON);
+//        }
         endNonterminal();
     }
 

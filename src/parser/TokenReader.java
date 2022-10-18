@@ -7,6 +7,7 @@ import java.util.List;
 class TokenReader {
     private List<Token> tokenList;
     private int i = 0;
+    private int checkpoint = 0;
 
     void init(List<Token> tokenList) {
         this.tokenList = tokenList;
@@ -32,5 +33,14 @@ class TokenReader {
 
     Token.TokenType read() {
         return tokenList.get(i).type;
+    }
+
+    // 用于回溯
+    void makeCheckpoint() {
+        checkpoint = i;
+    }
+
+    void loadCheckpoint() {
+        i = checkpoint;
     }
 }

@@ -17,6 +17,10 @@ class TreeBuilder {
         else current.children.add(node);
     }
 
+    Nonterminal getCurrent() {
+        return current;
+    }
+
     // 移动树的指针，不要移动到终结节点
     void moveTo(Nonterminal node) {
         current = node;
