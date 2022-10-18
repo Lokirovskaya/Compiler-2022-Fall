@@ -1,7 +1,7 @@
 package optimizer;
 
 import intercode.InterCode;
-import intercode.Operand;
+import intercode.Label;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -56,7 +56,7 @@ class ReduceGoto {
         });
     }
 
-    private static final Map<Operand.Label, Integer> labelRef = new HashMap<>();
+    private static final Map<Label, Integer> labelRef = new HashMap<>();
 
     private static void initLabelRef(InterCode inter) {
         inter.forEach(p -> {
@@ -67,7 +67,7 @@ class ReduceGoto {
         });
     }
 
-    private static int reduceLabelRef(Operand.Label label) {
+    private static int reduceLabelRef(Label label) {
         labelRef.computeIfPresent(label, (k, v) -> v - 1);
         return labelRef.get(label);
     }

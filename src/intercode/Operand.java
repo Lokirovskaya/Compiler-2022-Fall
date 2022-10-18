@@ -25,14 +25,6 @@ public abstract class Operand {
         }
     }
 
-    public static class Label extends Operand {
-        public String name;
-
-        public Label(String s) {
-            this.name = s;
-        }
-    }
-
     @Override
     public String toString() {
         if (this instanceof VirtualReg) {
@@ -40,8 +32,7 @@ public abstract class Operand {
             if (reg.isAddr) return "%&" + ((reg.name == null) ? reg.regID : reg.name);
             else return "%" + ((reg.name == null) ? reg.regID : reg.name);
         }
-        else if (this instanceof InstNumber) return String.valueOf(((InstNumber) this).number);
-        else return ((Label) this).name;
+        else return String.valueOf(((InstNumber) this).number);
     }
 }
 

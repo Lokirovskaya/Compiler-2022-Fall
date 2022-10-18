@@ -4,9 +4,9 @@ public class Quaternion {
     public OperatorType op;
     public Operand.VirtualReg target;
     public Operand x1, x2;
-    public Operand.Label label;
+    public Label label;
 
-    public Quaternion(OperatorType op, Operand.VirtualReg target, Operand x1, Operand x2, Operand.Label label) {
+    public Quaternion(OperatorType op, Operand.VirtualReg target, Operand x1, Operand x2, Label label) {
         this.op = op;
         this.target = target;
         this.x1 = x1;

@@ -1,7 +1,7 @@
 package optimizer;
 
 import intercode.InterCode;
-import intercode.Operand;
+import intercode.Label;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -14,7 +14,7 @@ class DeleteUnused {
     }
 
     private static void deleteUnusedLabel(InterCode inter) {
-        Set<Operand.Label> labelRef = new HashSet<>();
+        Set<Label> labelRef = new HashSet<>();
         inter.forEach(p -> {
             if (p.get().op == IF || p.get().op == IF_NOT || p.get().op == GOTO) {
                 labelRef.add(p.get().label);
