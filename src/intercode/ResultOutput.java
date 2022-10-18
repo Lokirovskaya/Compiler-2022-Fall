@@ -33,7 +33,7 @@ class ResultOutput {
             else if (q.op == GETINT) sb.append(String.format("%s = getint\n", q.target));
             else if (q.op == PRINT_INT) sb.append(String.format("printi %s\n", q.x1));
             else if (q.op == PRINT_STR) sb.append(String.format("prints %s\n", q.x1));
-            else if (q.op == PRINT_CHAR) sb.append(String.format("printc '%c'\n", ((Operand.InstNumber) q.x1).number));
+            else if (q.op == PRINT_CHAR) sb.append(String.format("printc %s\n",q.x1));
             else if (q.op == FUNC) sb.append(String.format("\nfunc %s\n", q.label));
             else if (q.op == LABEL) sb.append(String.format("%s:\n", q.label));
             else if (q.op == GOTO) sb.append(String.format("goto %s\n", q.label));

@@ -42,8 +42,7 @@ class ResultOutput {
                 sb.append(String.format("<%s>\n", ((Nonterminal) node).type.name()));
         }
         else {
-            if (node instanceof Token)
-                sb.append(node).append('\n');
+            if (node instanceof Token) sb.append(node).append('\n');
         }
     }
 
@@ -61,8 +60,7 @@ class ResultOutput {
                     case _BASIC_TYPE_:
                         return;
                 }
-                sb.append(String.format("<%s>\n",
-                        nonterminalTypeOutputNameMap.get(type)));
+                sb.append(String.format("<%s>\n", nonterminalTypeOutputNameMap.get(type)));
             }
         }
     }

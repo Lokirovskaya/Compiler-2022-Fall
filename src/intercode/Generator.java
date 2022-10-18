@@ -7,10 +7,7 @@ import parser.TreeNode;
 import symbol.Symbol;
 import util.Pair;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Stack;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static intercode.Operand.*;
@@ -24,6 +21,7 @@ public class Generator {
     private static final VirtualReg returnReg = new VirtualReg(0, "RET");
     private int regIdx = 1;
     private int labelIdx = 1;
+    private final Map<String, VirtualReg> stringConstRegMap = new HashMap<>();
     private final Stack<Pair<Label, Label>> whileLabelsList = new Stack<>();
 
     public Generator(TreeNode syntaxTreeRoot, Map<Token, Symbol> identSymbolMap) {
@@ -36,16 +34,6 @@ public class Generator {
         return inter;
     }
 
-    private Symbol.Var getVar(Token varIdent) {
-        assert varIdent.isType(IDENTIFIER);
-        return (Symbol.Var) identSymbolMap.get(varIdent);
-    }
-
-    private Symbol.Function getFunc(Token funcIdent) {
-        assert funcIdent.isType(IDENTIFIER);
-        return (Symbol.Function) identSymbolMap.get(funcIdent);
-    }
-
     private VirtualReg newReg() {
         return new VirtualReg(regIdx++);
     }
@@ -56,6 +44,28 @@ public class Generator {
 
     private void newQuater(Quaternion.OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
         inter.addLast(new Quaternion(op, target, x1, x2, label));
+    }
+
+    // 如果有重复的 str，就不重复 alloc 了
+    private VirtualReg allocStringConst(String str) {
+        if (stringConstRegMap.containsKey(str)) return stringConstRegMap.get(str);
+        else {
+            VirtualReg strReg = newReg();
+            strReg.isAddr = true;
+            inter.addFirst(new Quaternion(OperatorType.ALLOC_STR, strReg, null, null, new Label(str)));
+            stringConstRegMap.put(str, strReg);
+            return strReg;
+        }
+    }
+
+    private Symbol.Var getVar(Token varIdent) {
+        assert varIdent.isType(IDENTIFIER);
+        return (Symbol.Var) identSymbolMap.get(varIdent);
+    }
+
+    private Symbol.Function getFunc(Token funcIdent) {
+        assert funcIdent.isType(IDENTIFIER);
+        return (Symbol.Function) identSymbolMap.get(funcIdent);
     }
 
     // 获得变量对应的寄存器
@@ -314,8 +324,6 @@ public class Generator {
         }
         // 'printf' '(' FormatString { ',' Exp } ')' ';'
         else if (stmt.child(0).isType(PRINTF)) {
-            String formatTokenValue = ((Token) stmt.child(2)).value;
-            String format = formatTokenValue.substring(1, formatTokenValue.length() - 1); // 跳过前后双引号
             List<Operand> expList = stmt.children.stream()
                     .filter(p -> p.isType(_EXPRESSION_))
                     .map(e -> EXPRESSION((Nonterminal) e))
@@ -323,22 +331,20 @@ public class Generator {
             int expIdx = 0;
             StringBuilder buffer = new StringBuilder();
             Runnable printAndClearBuffer = () -> {
-                // 输出 buffer（如果非空），然后清空 buffer；如果 buffer 长度为 1，简化为输出单字符
+                // 输出 buffer（如果非空），然后清空 buffer；如果 buffer 长度为 1，或 "\n"，简化为输出单字符
                 if (buffer.length() > 0) {
                     String str = buffer.toString();
-                    if (str.length() > 1) {
-                        VirtualReg strReg = newReg();
-                        strReg.isAddr = true;
-                        newQuater(OperatorType.ALLOC_STR, strReg, null, null, new Label(str));
-                        newQuater(OperatorType.PRINT_STR, null, strReg, null, null);
-                    }
-                    else {
+                    if (str.length() == 1)
                         newQuater(OperatorType.PRINT_CHAR, null, new InstNumber(str.charAt(0)), null, null);
-                    }
+                    else if (str.equals("\\n"))
+                        newQuater(OperatorType.PRINT_CHAR, null, new InstNumber('\n'), null, null);
+                    else
+                        newQuater(OperatorType.PRINT_STR, null, allocStringConst(str), null, null);
                     buffer.delete(0, buffer.length());
                 }
             };
-            for (int i = 0; i < format.length(); i++) {
+            String format = ((Token) stmt.child(2)).value;
+            for (int i = 1; i < format.length() - 1; i++) {  // 跳过前后双引号
                 if (format.charAt(i) == '%') {
                     // 输出 buffer，再输出一个数字
                     assert format.charAt(i + 1) == 'd';
