@@ -2,18 +2,30 @@ package intercode;
 
 public abstract class Operand {
     public static class VirtualReg extends Operand {
-        public int regID, realReg;
-        public boolean declareConst = false;
-        public boolean isAddr = false;
+        public int regID;
+        public int realReg = -1; // 分配了的实寄存器
+        public int tableID;
+        public boolean isAddr;
+        public boolean isGlobal;
         public String name;
 
         public VirtualReg(int r) {
             this.regID = r;
         }
 
-        public VirtualReg(int r, String name) {
-            this.regID = r;
-            this.name = name;
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append('@');
+            if (isGlobal) sb.append('@');
+            if (isAddr) sb.append('&');
+            if (name != null) {
+                sb.append(name);
+                if (tableID > 0) sb.append('#').append(tableID);
+            }
+            else sb.append(regID);
+            if (realReg >= 0) sb.append('$').append(realReg);
+            return sb.toString();
         }
     }
 
@@ -23,16 +35,11 @@ public abstract class Operand {
         public InstNumber(int i) {
             this.number = i;
         }
-    }
 
-    @Override
-    public String toString() {
-        if (this instanceof VirtualReg) {
-            VirtualReg reg = (VirtualReg) this;
-            if (reg.isAddr) return "%&" + ((reg.name == null) ? reg.regID : reg.name);
-            else return "%" + ((reg.name == null) ? reg.regID : reg.name);
+        @Override
+        public String toString() {
+            return String.valueOf(number);
         }
-        else return String.valueOf(((InstNumber) this).number);
     }
 }
 

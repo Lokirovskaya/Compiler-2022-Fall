@@ -18,7 +18,7 @@ public class Generator {
     private final InterCode inter = new InterCode();
     private final TreeNode syntaxTreeRoot;
     private final Map<Token, Symbol> identSymbolMap;
-    private static final VirtualReg returnReg = new VirtualReg(0, "RET");
+    private static final VirtualReg returnReg = new VirtualReg(0);
     private int regIdx = 1;
     private int labelIdx = 1;
     private final Map<String, VirtualReg> stringConstRegMap = new HashMap<>();
@@ -30,8 +30,15 @@ public class Generator {
     }
 
     public InterCode generate() {
+        newQuater(OperatorType.CALL, null, null, null, new Label("main"));
+        newQuater(OperatorType.EXIT, null, null, null, null);
         COMPILE_UNIT(syntaxTreeRoot);
         return inter;
+    }
+
+    static {
+        returnReg.name = "RET";
+        returnReg.realReg = 2;
     }
 
     private VirtualReg newReg() {
@@ -46,13 +53,18 @@ public class Generator {
         inter.addLast(new Quaternion(op, target, x1, x2, label));
     }
 
+    private void newQuaterFirst(Quaternion.OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
+        inter.addFirst(new Quaternion(op, target, x1, x2, label));
+    }
+
     // 如果有重复的 str，就不重复 alloc 了
     private VirtualReg allocStringConst(String str) {
         if (stringConstRegMap.containsKey(str)) return stringConstRegMap.get(str);
         else {
             VirtualReg strReg = newReg();
             strReg.isAddr = true;
-            inter.addFirst(new Quaternion(OperatorType.ALLOC_STR, strReg, null, null, new Label(str)));
+            strReg.isGlobal = true;
+            newQuaterFirst(OperatorType.ALLOC_STR, strReg, null, null, new Label(str));
             stringConstRegMap.put(str, strReg);
             return strReg;
         }
@@ -76,9 +88,10 @@ public class Generator {
         Symbol.Var var = getVar(varIdent);
         if (var.reg == null) {
             var.reg = newReg();
-            var.reg.name = var.name + '_' + var.selfTable.id;
-            var.reg.declareConst = var.isConst;
+            var.reg.name = var.name;
+            var.reg.tableID = var.selfTable.id;
             var.reg.isAddr = var.isArray();
+            var.reg.isGlobal = (var.selfTable.id == 0);
         }
         return var.reg;
     }
@@ -154,13 +167,16 @@ public class Generator {
         assert init.isType(_VAR_INIT_VALUE_) || init.isType(_CONST_INIT_VALUE_);
         if (!target.isAddr) {
             Operand expAns = EXPRESSION((Nonterminal) init.child(0));
-            newQuater(OperatorType.SET, target, expAns, null, null);
+            if (target.isGlobal) newQuaterFirst(OperatorType.SET, target, expAns, null, null);
+            else newQuater(OperatorType.SET, target, expAns, null, null);
         }
         else {
             List<Operand> initExpList = new ArrayList<>();
             findChildExpressions(init, initExpList);
             for (int i = 0; i < initExpList.size(); i++) {
-                newQuater(OperatorType.SET_ARRAY, target, new InstNumber(i), initExpList.get(i), null);
+                if (target.isGlobal)
+                    newQuaterFirst(OperatorType.SET_ARRAY, target, new InstNumber(i), initExpList.get(i), null);
+                else newQuater(OperatorType.SET_ARRAY, target, new InstNumber(i), initExpList.get(i), null);
             }
         }
     }
@@ -197,6 +213,7 @@ public class Generator {
             }
         }
         BLOCK(def.child(def.children.size() - 1));
+        newQuater(OperatorType.END_FUNC, null,null,null, null);
     }
 
     private void FUNCTION_DEFINE_PARAM(Nonterminal paramDef) {

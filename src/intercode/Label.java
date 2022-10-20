@@ -1,7 +1,7 @@
 package intercode;
 
 public class Label {
-    public String name;
+    public final String name;
 
     public Label(String s) {
         this.name = s;

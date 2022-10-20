@@ -29,22 +29,4 @@ public class NodeList<E> {
             else node = node.next;
         }
     }
-
-    public static void main(String[] args) {
-        NodeList<Integer> list = new NodeList<>();
-        list.addLast(1);
-        list.addLast(1);
-        list.addLast(3);
-        list.addLast(4);
-        list.addLast(5);
-        list.addFirst(0);
-
-        list.forEach(p -> {
-            if ( p.get(1) != null && p.get(1) == 1) {
-                p.delete(1);
-
-            }
-        });
-        list.forEach(p -> System.out.println(p.get()));
-    }
 }

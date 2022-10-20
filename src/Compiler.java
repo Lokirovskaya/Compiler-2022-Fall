@@ -3,7 +3,7 @@ import intercode.Generator;
 import intercode.InterCode;
 import lexer.Lexer;
 import lexer.Token;
-import mips.MipsTranslator;
+import mips.MipsCoder;
 import optimizer.Optimizer;
 import parser.Parser;
 import parser.TreeNode;
@@ -37,7 +37,7 @@ public class Compiler {
 
         Parser parser = new Parser(tokenList);
         TreeNode root = parser.parse();
-         parser.output("output.txt", false);
+        // parser.output("_parser.txt", false);
 
         TableBuilder tableBuilder = new TableBuilder(root);
         Map<Token, Symbol> identSymbolMap = tableBuilder.build();
@@ -50,10 +50,11 @@ public class Compiler {
         Generator generator = new Generator(root, identSymbolMap);
         InterCode inter = generator.generate();
         inter.output("inter.txt");
-        Optimizer.Optimize(inter);
-        inter.output("inter_opt.txt");
+//        Optimizer.Optimize(inter);
+//        inter.output("inter_opt.txt");
 
-        MipsTranslator translator = new MipsTranslator(inter);
-        translator.translate();
+        MipsCoder mipsCoder = new MipsCoder(inter);
+        mipsCoder.generateMips();
+        mipsCoder.output("mips.txt");
     }
 }

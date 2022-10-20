@@ -24,5 +24,6 @@ public class InterCode {
 
     public void forEach(Consumer<NodeListNode<Quaternion>> func) {
         list.forEach(func);
+
     }
 }
