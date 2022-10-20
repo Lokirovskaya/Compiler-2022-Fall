@@ -2,6 +2,8 @@ package intercode;
 
 import intercode.Quaternion.OperatorType;
 import lexer.Token;
+import optimizer.ClearLabel;
+import optimizer.MergeInst;
 import parser.Nonterminal;
 import parser.TreeNode;
 import symbol.Symbol;
@@ -33,6 +35,8 @@ public class Generator {
         newQuater(OperatorType.CALL, null, null, null, new Label("main"));
         newQuater(OperatorType.EXIT, null, null, null, null);
         COMPILE_UNIT(syntaxTreeRoot);
+        MergeInst.run(inter);
+        ClearLabel.run(inter);
         return inter;
     }
 
@@ -41,7 +45,9 @@ public class Generator {
         returnReg.realReg = 2;
     }
 
+    // 跳过整 10 的 reg，留给优化时用
     private VirtualReg newReg() {
+        if (regIdx % 10 == 0) regIdx++;
         return new VirtualReg(regIdx++);
     }
 
@@ -213,7 +219,7 @@ public class Generator {
             }
         }
         BLOCK(def.child(def.children.size() - 1));
-        newQuater(OperatorType.END_FUNC, null,null,null, null);
+        newQuater(OperatorType.END_FUNC, null, null, null, null);
     }
 
     private void FUNCTION_DEFINE_PARAM(Nonterminal paramDef) {

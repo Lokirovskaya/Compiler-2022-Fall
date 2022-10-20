@@ -14,6 +14,10 @@ public class NodeListNode<E> {
         return this.next.getSelf();
     }
 
+    public void set(E e) {
+        this.next.data = e;
+    }
+
     public E get(int offset) {
         if (offset == 0) return this.get();
         NodeListNode<E> node = this.next.nodeOffset(offset);
