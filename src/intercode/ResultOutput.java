@@ -18,6 +18,7 @@ class ResultOutput {
             else if (q.op == MULT) sb.append(String.format("%s = %s * %s\n", q.target, q.x1, q.x2));
             else if (q.op == DIV) sb.append(String.format("%s = %s / %s\n", q.target, q.x1, q.x2));
             else if (q.op == MOD) sb.append(String.format("%s = %s %% %s\n", q.target, q.x1, q.x2));
+            else if (q.op == NEG) sb.append(String.format("%s = -%s\n", q.target, q.x1));
             else if (q.op == GET_ARRAY) sb.append(String.format("%s = %s[%s]\n", q.target, q.x1, q.x2));
             else if (q.op == SET_ARRAY) sb.append(String.format("%s[%s] = %s\n", q.target, q.x1, q.x2));
             else if (q.op == LOAD_ADDR) sb.append(String.format("%s = &%s\n", q.target, q.x1));

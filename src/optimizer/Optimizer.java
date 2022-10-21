@@ -3,9 +3,15 @@ package optimizer;
 import intercode.InterCode;
 
 public class Optimizer {
-    public static void Optimize(InterCode inter) {
+    public static void optimize(InterCode inter) {
         ReduceGoto.run(inter);
-//        ReduceGoto.run(inter);
-//        DeleteUnused.run(inter);
+        ClearLabel.run(inter);
+        MipsPreprocess(inter);
+    }
+
+    // 必做的步骤，否则难以生成 mips 代码
+    public static void MipsPreprocess(InterCode inter) {
+        MergeInst.run(inter);
+        SwapOperand.run(inter);
     }
 }

@@ -7,10 +7,10 @@ import intercode.Quaternion.OperatorType;
 
 import static intercode.Quaternion.OperatorType.*;
 
-// 将操作数全部是立即数的指令进行计算，因为无法生成操作数都是立即数的 MIPS 代码
+// 将 x1, x2 全是立即数的指令进行计算，因为无法生成操作数都是立即数的 MIPS 代码
 // 计算指令，转换成 SET：ADD, SUB, MULT, DIV, MOD, NOT, EQ, NOT_EQ, LESS, LESS_EQ, GREATER, GREATER_EQ,
 // 分支指令，转换成 GOTO 或删除：IF, IF_NOT
-public class MergeInst {
+class MergeInst {
     public static void run(InterCode inter) {
         inter.forEach(p -> {
             // 一元
@@ -20,6 +20,9 @@ public class MergeInst {
                 if (op == NOT) {
                     int ans = (x1 != 0) ? 0 : 1;
                     p.set(new Quaternion(SET, p.get().target, new InstNumber(ans), null, null));
+                }
+                else if (op == NEG) {
+                    p.set(new Quaternion(SET, p.get().target, new InstNumber(-x1), null, null));
                 }
                 else if (op == IF) {
                     if (x1 != 0) p.set(new Quaternion(GOTO, null, null, null, p.get().label));

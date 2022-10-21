@@ -2,8 +2,7 @@ package intercode;
 
 import intercode.Quaternion.OperatorType;
 import lexer.Token;
-import optimizer.ClearLabel;
-import optimizer.MergeInst;
+import optimizer.Optimizer;
 import parser.Nonterminal;
 import parser.TreeNode;
 import symbol.Symbol;
@@ -12,7 +11,8 @@ import util.Pair;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static intercode.Operand.*;
+import static intercode.Operand.InstNumber;
+import static intercode.Operand.VirtualReg;
 import static lexer.Token.TokenType.*;
 import static parser.Nonterminal.NonterminalType.*;
 
@@ -21,8 +21,6 @@ public class Generator {
     private final TreeNode syntaxTreeRoot;
     private final Map<Token, Symbol> identSymbolMap;
     private static final VirtualReg returnReg = new VirtualReg(0);
-    private int regIdx = 1;
-    private int labelIdx = 1;
     private final Map<String, VirtualReg> stringConstRegMap = new HashMap<>();
     private final Stack<Pair<Label, Label>> whileLabelsList = new Stack<>();
 
@@ -35,24 +33,22 @@ public class Generator {
         newQuater(OperatorType.CALL, null, null, null, new Label("main"));
         newQuater(OperatorType.EXIT, null, null, null, null);
         COMPILE_UNIT(syntaxTreeRoot);
-        MergeInst.run(inter);
-        ClearLabel.run(inter);
+        Optimizer.MipsPreprocess(inter);
         return inter;
     }
 
     static {
         returnReg.name = "RET";
         returnReg.realReg = 2;
+        returnReg.isGlobal = true;
     }
 
-    // 跳过整 10 的 reg，留给优化时用
     private VirtualReg newReg() {
-        if (regIdx % 10 == 0) regIdx++;
-        return new VirtualReg(regIdx++);
+        return inter.newReg();
     }
 
     private Label newLabel() {
-        return new Label("label_" + labelIdx++);
+        return inter.newLabel();
     }
 
     private void newQuater(Quaternion.OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
@@ -442,19 +438,18 @@ public class Generator {
         // UnaryExp → UnaryOp UnaryExp, UnaryOp → '+' | '−' | '!'
         else {
             Nonterminal unaryOp = (Nonterminal) exp.child(0);
+            Operand unaryAns = UNARY_EXPRESSION((Nonterminal) exp.child(1));
             if (unaryOp.child(0).isType(PLUS)) { // do nothing
-                return UNARY_EXPRESSION((Nonterminal) exp.child(1));
+                return unaryAns;
             }
             else if (unaryOp.child(0).isType(MINUS)) { // negate
                 VirtualReg ans = newReg();
-                newQuater(OperatorType.SUB, ans,
-                        new InstNumber(0), UNARY_EXPRESSION((Nonterminal) exp.child(1)), null);
+                newQuater(OperatorType.NEG, ans, unaryAns, null, null);
                 return ans;
             }
             else {
                 VirtualReg ans = newReg();
-                newQuater(OperatorType.NOT, ans,
-                        UNARY_EXPRESSION((Nonterminal) exp.child(1)), null, null);
+                newQuater(OperatorType.NOT, ans, unaryAns, null, null);
                 return ans;
             }
         }

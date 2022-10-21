@@ -8,7 +8,7 @@ import java.util.Set;
 
 import static intercode.Quaternion.OperatorType.*;
 
-public class ClearLabel {
+class ClearLabel {
     public static void run(InterCode inter) {
         Set<Label> labelRef = new HashSet<>();
         inter.forEach(p -> {

@@ -24,13 +24,13 @@ public class NodeListNode<E> {
         return node == null ? null : node.getSelf();
     }
 
-//    void insertNext(E e) {
-//        this.next.insertNextSelf(e);
-//    }
-//
-//    void insertPrev(E e) {
-//        this.next.insertPrevSelf(e);
-//    }
+    public void insertNext(E e) {
+        this.next.insertNextSelf(e);
+    }
+
+    public void insertPrev(E e) {
+        this.next.insertPrevSelf(e);
+    }
 
     public void delete() {
         nextDeleted = true;
