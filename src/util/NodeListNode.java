@@ -38,6 +38,7 @@ public class NodeListNode<E> {
     }
 
     public void delete(int offset) {
+        assert offset >= 0;
         nextDeleted = true;
         if (offset == 0) this.delete();
         NodeListNode<E> node = this.next.nodeOffset(offset);

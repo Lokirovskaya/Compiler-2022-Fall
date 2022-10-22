@@ -23,7 +23,13 @@ class ResultOutput {
             else if (q.op == SET_ARRAY) sb.append(String.format("%s[%s] = %s\n", q.target, q.x1, q.x2));
             else if (q.op == LOAD_ADDR) sb.append(String.format("%s = &%s\n", q.target, q.x1));
             else if (q.op == IF) sb.append(String.format("if %s goto %s\n", q.x1, q.label));
-            else if (q.op == IF_NOT) sb.append(String.format("if_not %s goto %s\n", q.x1, q.label));
+            else if (q.op == IF_NOT) sb.append(String.format("if_not !%s goto %s\n", q.x1, q.label));
+            else if (q.op == IF_EQ) sb.append(String.format("if_cond %s == %s goto %s\n", q.x1, q.x2, q.label));
+            else if (q.op == IF_NOT_EQ) sb.append(String.format("if_cond %s != %s goto %s\n", q.x1, q.x2, q.label));
+            else if (q.op == IF_LESS) sb.append(String.format("if_cond %s < %s goto %s\n", q.x1, q.x2, q.label));
+            else if (q.op == IF_LESS_EQ) sb.append(String.format("if_cond %s <= %s goto %s\n", q.x1, q.x2, q.label));
+            else if (q.op == IF_GREATER) sb.append(String.format("if_cond %s > %s goto %s\n", q.x1, q.x2, q.label));
+            else if (q.op == IF_GREATER_EQ) sb.append(String.format("if_cond %s >= %s goto %s\n", q.x1, q.x2, q.label));
             else if (q.op == NOT) sb.append(String.format("%s = !%s\n", q.target, q.x1));
             else if (q.op == EQ) sb.append(String.format("%s = %s == %s\n", q.target, q.x1, q.x2));
             else if (q.op == NOT_EQ) sb.append(String.format("%s = %s != %s\n", q.target, q.x1, q.x2));
@@ -34,7 +40,7 @@ class ResultOutput {
             else if (q.op == GETINT) sb.append(String.format("%s = getint\n", q.target));
             else if (q.op == PRINT_INT) sb.append(String.format("printi %s\n", q.x1));
             else if (q.op == PRINT_STR) sb.append(String.format("prints %s\n", q.x1));
-            else if (q.op == PRINT_CHAR) sb.append(String.format("printc %s\n",q.x1));
+            else if (q.op == PRINT_CHAR) sb.append(String.format("printc %s\n", q.x1));
             else if (q.op == FUNC) sb.append(String.format("\nfunc %s\n", q.label));
             else if (q.op == END_FUNC) sb.append("end_func\n");
             else if (q.op == LABEL) sb.append(String.format("%s:\n", q.label));

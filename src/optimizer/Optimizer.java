@@ -6,6 +6,7 @@ public class Optimizer {
     public static void optimize(InterCode inter) {
         ReduceGoto.run(inter);
         ClearLabel.run(inter);
+        MergeCond.run(inter);
         MipsPreprocess(inter);
     }
 
