@@ -26,10 +26,9 @@ class Allocator {
             // 遇到下一个 func，结算当前 func
             if (p.get().op == FUNC) {
                 if (curFuncInfo.get() != null) {
-                    // size 本应当 == offset + 4，但是还要多存一个 $ra
-                    curFuncInfo.get().size = curOffset.get() + 8;
+                    curFuncInfo.get().size = curOffset.get() + 4;
                     allocInfo.funcMap.put(curFuncInfo.get().name, curFuncInfo.get());
-                    curOffset.set(-4);
+                    curOffset.set(0);
                 }
                 curFuncInfo.set(new AllocationInfo.FunctionInfo());
                 curFuncInfo.get().name = p.get().label.name;
@@ -50,7 +49,7 @@ class Allocator {
                 curFuncInfo.get().paramList.add(p.get().target);
             }
         });
-        curFuncInfo.get().size = curOffset.get() + 8;
+        curFuncInfo.get().size = curOffset.get() + 4;
         allocInfo.funcMap.put(curFuncInfo.get().name, curFuncInfo.get());
         return allocInfo;
     }

@@ -433,7 +433,7 @@ public class Generator {
                     }
                 }
             }
-            newQuater(OperatorType.END_CALL, null, null, null, new Label(func.name));
+            newQuater(OperatorType.END_CALL, null, null, null, null);
             if (!func.isVoid) return returnReg;
             else return null;
         }

@@ -1,6 +1,5 @@
 package mips;
 
-import intercode.Operand;
 import intercode.Operand.VirtualReg;
 
 import java.util.ArrayList;
@@ -18,16 +17,16 @@ class AllocationInfo {
         List<VirtualReg> paramList = new ArrayList<>();
     }
 
-    int getVregOffset(VirtualReg vreg) {
-        return vregOffsetMap.get(vreg);
+    Integer getVregOffset(VirtualReg vreg) {
+        return vregOffsetMap.getOrDefault(vreg, null);
     }
 
     int getFuncSize(String funcName) {
         return funcMap.get(funcName).size;
     }
 
-    List<VirtualReg> getFuncParamList(String funcName) {
-        return funcMap.get(funcName).paramList;
+    VirtualReg getFuncParam(String funcName, int idx) {
+        return funcMap.get(funcName).paramList.get(idx);
     }
 
     @Override

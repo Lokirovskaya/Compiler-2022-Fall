@@ -8,7 +8,7 @@ import intercode.Quaternion;
 
 import static intercode.Quaternion.OperatorType.*;
 
-// 如果 x1 是立即数，x2 是 vreg，将其交换，可能有副作用（如 sub 和 div 等）
+// 如果 x1 是立即数，x2 是 vreg，将其交换，不符合交换律的，在 MipsCoder 中操作
 class SwapOperand {
     public static void run(InterCode inter) {
         inter.forEach(p -> {
@@ -16,15 +16,6 @@ class SwapOperand {
                 Quaternion.OperatorType op = p.get().op;
                 if (op == ADD || op == MULT || op == EQ || op == NOT_EQ || op == GET_ARRAY) {
                     swapX1X2(p.get());
-                }
-                else if (op == SUB) {
-                    swapX1X2(p.get());
-                    p.insertNext(new Quaternion(NEG, p.get().target, p.get().target, null, null));
-                }
-                else if (op == DIV || op == MOD) {
-                    VirtualReg reg = inter.newReg();
-                    p.insertPrev(new Quaternion(SET, reg, p.get().x1, null, null));
-                    p.get().x1 = reg;
                 }
                 else if (op == LESS) {
                     swapX1X2(p.get());
