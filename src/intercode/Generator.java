@@ -106,9 +106,20 @@ public class Generator {
         if (array.dimension == 1) return offset.get(0);
         else {
             // ans = x * a.sizeOfDim1 + y
-            VirtualReg multAns = newReg();
-            newQuater(OperatorType.MULT, multAns, offset.get(0), array.sizeOfDim1, null);
+            Operand multAns;
+            if (offset.get(0) instanceof InstNumber) {
+                multAns = new InstNumber(((InstNumber) offset.get(0)).number * array.sizeOfDim1.number);
+            }
+            else {
+                multAns = newReg();
+                newQuater(OperatorType.MULT, (VirtualReg) multAns, offset.get(0), array.sizeOfDim1, null);
+            }
+
             if (offset.size() == 1) return multAns; // 不完全取地址
+
+            if (multAns instanceof InstNumber && offset.get(1) instanceof InstNumber) {
+                return new InstNumber(((InstNumber) multAns).number + ((InstNumber) offset.get(1)).number);
+            }
             else {
                 VirtualReg ans = newReg();
                 newQuater(OperatorType.ADD, ans, multAns, offset.get(1), null);
@@ -147,15 +158,14 @@ public class Generator {
             // Ident '[' ConstExp ']' '[' ConstExp ']'
             VirtualReg arrayReg = getVarReg(ident);
             if (var.dimension == 1) {
-                var.sizeOfDim1 = EXPRESSION((Nonterminal) def.child(2));
+                var.sizeOfDim1 = (InstNumber) EXPRESSION((Nonterminal) def.child(2));
                 newQuater(OperatorType.ALLOC, arrayReg, var.sizeOfDim1, null, null);
             }
             else if (var.dimension == 2) {
-                var.sizeOfDim1 = EXPRESSION((Nonterminal) def.child(5));
-                var.sizeOfDim2 = EXPRESSION((Nonterminal) def.child(2));
-                VirtualReg fullSize = newReg();
-                newQuater(OperatorType.MULT, fullSize, var.sizeOfDim1, var.sizeOfDim2, null);
-                newQuater(OperatorType.ALLOC, arrayReg, fullSize, null, null);
+                var.sizeOfDim1 = (InstNumber) EXPRESSION((Nonterminal) def.child(5));
+                var.sizeOfDim2 = (InstNumber) EXPRESSION((Nonterminal) def.child(2));
+                int fullSize = var.sizeOfDim1.number * var.sizeOfDim2.number;
+                newQuater(OperatorType.ALLOC, arrayReg, new InstNumber(fullSize), null, null);
             }
         }
         // if def has an init value
@@ -229,7 +239,7 @@ public class Generator {
                 newQuater(OperatorType.PARAM, paramReg, null, null, null);
             }
             else if (param.dimension == 2) {
-                param.sizeOfDim1 = EXPRESSION((Nonterminal) paramDef.child(5));
+                param.sizeOfDim1 = (InstNumber) EXPRESSION((Nonterminal) paramDef.child(5));
                 newQuater(OperatorType.PARAM, paramReg, null, null, null);
             }
         }
