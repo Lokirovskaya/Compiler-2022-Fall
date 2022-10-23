@@ -6,6 +6,9 @@ public class Optimizer {
     public static void optimize(InterCode inter) {
         ReduceGoto.run(inter);
         ClearLabel.run(inter);
+        // todo 收起 MergeInst 和 SwapOperand
+        MergeInst.run(inter);
+        SwapOperand.run(inter);
         MergeCond.run(inter);
         MipsPreprocess(inter);
     }

@@ -31,6 +31,7 @@ public class Generator {
 
     public InterCode generate() {
         newQuater(OperatorType.CALL, null, null, null, new Label("main"));
+        newQuater(OperatorType.END_CALL, null, null, null, new Label("main"));
         newQuater(OperatorType.EXIT, null, null, null, null);
         COMPILE_UNIT(syntaxTreeRoot);
         Optimizer.MipsPreprocess(inter);
@@ -215,7 +216,6 @@ public class Generator {
             }
         }
         BLOCK(def.child(def.children.size() - 1));
-        newQuater(OperatorType.END_FUNC, null, null, null, null);
     }
 
     private void FUNCTION_DEFINE_PARAM(Nonterminal paramDef) {
@@ -226,15 +226,15 @@ public class Generator {
         if (param.isArray()) {
             // BType Ident '[' ']' '[' ConstExp ']'
             if (param.dimension == 1) {
-                newQuater(OperatorType.PARAM, null, paramReg, null, null);
+                newQuater(OperatorType.PARAM, paramReg, null, null, null);
             }
             else if (param.dimension == 2) {
                 param.sizeOfDim1 = EXPRESSION((Nonterminal) paramDef.child(5));
-                newQuater(OperatorType.PARAM, null, paramReg, null, null);
+                newQuater(OperatorType.PARAM, paramReg, null, null, null);
             }
         }
         else {
-            newQuater(OperatorType.PARAM, null, paramReg, null, null);
+            newQuater(OperatorType.PARAM, paramReg, null, null, null);
         }
     }
 
@@ -265,7 +265,8 @@ public class Generator {
             if (stmt.child(2).isType(_EXPRESSION_)) {
                 expAns = EXPRESSION((Nonterminal) stmt.child(2));
             }
-            else { // getint exp
+            // getint exp
+            else {
                 expAns = newReg();
                 newQuater(OperatorType.GETINT, (VirtualReg) expAns, null, null, null);
             }
@@ -423,6 +424,7 @@ public class Generator {
         else if (exp.child(0).isType(IDENTIFIER)) {
             Token ident = (Token) exp.child(0);
             Symbol.Function func = getFunc(ident);
+            newQuater(OperatorType.CALL, null, null, null, new Label(func.name));
             if (exp.child(2).isType(_FUNCTION_CALL_PARAM_LIST_)) {
                 for (TreeNode p : ((Nonterminal) exp.child(2)).children) {
                     if (p.isType(_EXPRESSION_)) {
@@ -431,7 +433,7 @@ public class Generator {
                     }
                 }
             }
-            newQuater(OperatorType.CALL, null, null, null, new Label(func.name));
+            newQuater(OperatorType.END_CALL, null, null, null, new Label(func.name));
             if (!func.isVoid) return returnReg;
             else return null;
         }
