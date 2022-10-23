@@ -380,7 +380,9 @@ public class Generator {
 
     private Operand EXPRESSION(Nonterminal exp) {
         assert exp.isType(_EXPRESSION_) || exp.isType(_CONST_EXPRESSION_);
-        return ADD_EXPRESSION((Nonterminal) exp.child(0));
+        Operand ans = ADD_EXPRESSION((Nonterminal) exp.child(0));
+        if (exp.isType(_CONST_EXPRESSION_)) assert ans instanceof InstNumber;
+        return ans;
     }
 
     private Operand ADD_EXPRESSION(Nonterminal exp) {
@@ -389,11 +391,18 @@ public class Generator {
             return MULTIPLY_EXPRESSION((Nonterminal) exp.child(0));
         else {
             OperatorType op = exp.child(1).isType(PLUS) ? OperatorType.ADD : OperatorType.SUB;
-            VirtualReg ans = newReg();
-            newQuater(op, ans,
-                    ADD_EXPRESSION((Nonterminal) exp.child(0)),
-                    MULTIPLY_EXPRESSION((Nonterminal) exp.child(2)), null);
-            return ans;
+            Operand addAns = ADD_EXPRESSION((Nonterminal) exp.child(0));
+            Operand multAns = MULTIPLY_EXPRESSION((Nonterminal) exp.child(2));
+            if (addAns instanceof InstNumber && multAns instanceof InstNumber) {
+                int x1 = ((InstNumber) addAns).number;
+                int x2 = ((InstNumber) multAns).number;
+                return new InstNumber(op == OperatorType.ADD ? x1 + x2 : x1 - x2);
+            }
+            else {
+                VirtualReg ans = newReg();
+                newQuater(op, ans, addAns, multAns, null);
+                return ans;
+            }
         }
     }
 
@@ -407,11 +416,22 @@ public class Generator {
             if (exp.child(1).isType(MULTIPLY)) op = OperatorType.MULT;
             else if (exp.child(1).isType(DIVIDE)) op = OperatorType.DIV;
             else op = OperatorType.MOD;
-            VirtualReg ans = newReg();
-            newQuater(op, ans,
-                    MULTIPLY_EXPRESSION((Nonterminal) exp.child(0)),
-                    UNARY_EXPRESSION((Nonterminal) exp.child(2)), null);
-            return ans;
+            Operand multAns = MULTIPLY_EXPRESSION((Nonterminal) exp.child(0));
+            Operand unaryAns = UNARY_EXPRESSION((Nonterminal) exp.child(2));
+            if (multAns instanceof InstNumber && unaryAns instanceof InstNumber) {
+                int x1 = ((InstNumber) multAns).number;
+                int x2 = ((InstNumber) unaryAns).number;
+                int y;
+                if (op == OperatorType.MULT) y = x1 * x2;
+                else if (op == OperatorType.DIV) y = x1 / x2;
+                else y = x1 % x2;
+                return new InstNumber(y);
+            }
+            else {
+                VirtualReg ans = newReg();
+                newQuater(op, ans, multAns, unaryAns, null);
+                return ans;
+            }
         }
     }
 
@@ -445,14 +465,22 @@ public class Generator {
                 return unaryAns;
             }
             else if (unaryOp.child(0).isType(MINUS)) { // negate
-                VirtualReg ans = newReg();
-                newQuater(OperatorType.NEG, ans, unaryAns, null, null);
-                return ans;
+                if (unaryAns instanceof InstNumber)
+                    return new InstNumber(-((InstNumber) unaryAns).number);
+                else {
+                    VirtualReg ans = newReg();
+                    newQuater(OperatorType.NEG, ans, unaryAns, null, null);
+                    return ans;
+                }
             }
             else {
-                VirtualReg ans = newReg();
-                newQuater(OperatorType.NOT, ans, unaryAns, null, null);
-                return ans;
+                if (unaryAns instanceof InstNumber)
+                    return new InstNumber(((InstNumber) unaryAns).number != 0 ? 0 : 1);
+                else {
+                    VirtualReg ans = newReg();
+                    newQuater(OperatorType.NOT, ans, unaryAns, null, null);
+                    return ans;
+                }
             }
         }
     }
@@ -514,7 +542,6 @@ public class Generator {
             LOGIC_OR_EXPRESSION((Nonterminal) cond.child(0), trueLabel, newFalseLabel);
             newQuater(OperatorType.LABEL, null, null, null, newFalseLabel);
             LOGIC_AND_EXPRESSION((Nonterminal) cond.child(2), trueLabel, falseLabel);
-
         }
     }
 
@@ -541,11 +568,21 @@ public class Generator {
         }
         else {
             OperatorType op = cond.child(1).isType(EQUAL) ? OperatorType.EQ : OperatorType.NOT_EQ;
-            VirtualReg ans = newReg();
-            newQuater(op, ans,
-                    EQUAL_EXPRESSION((Nonterminal) cond.child(0)),
-                    RELATION_EXPRESSION((Nonterminal) cond.child(2)), null);
-            return ans;
+            Operand eqAns = EQUAL_EXPRESSION((Nonterminal) cond.child(0));
+            Operand relAns = RELATION_EXPRESSION((Nonterminal) cond.child(2));
+            if (eqAns instanceof InstNumber && relAns instanceof InstNumber) {
+                int x1 = ((InstNumber) eqAns).number;
+                int x2 = ((InstNumber) relAns).number;
+                int y;
+                if (op == OperatorType.EQ) y = x1 == x2 ? 1 : 0;
+                else y = x1 != x2 ? 1 : 0;
+                return new InstNumber(y);
+            }
+            else {
+                VirtualReg ans = newReg();
+                newQuater(op, ans, eqAns, relAns, null);
+                return ans;
+            }
         }
     }
 
@@ -560,11 +597,23 @@ public class Generator {
             else if (cond.child(1).isType(LESS_EQUAL)) op = OperatorType.LESS_EQ;
             else if (cond.child(1).isType(GREATER)) op = OperatorType.GREATER;
             else op = OperatorType.GREATER_EQ;
-            VirtualReg ans = newReg();
-            newQuater(op, ans,
-                    RELATION_EXPRESSION((Nonterminal) cond.child(0)),
-                    ADD_EXPRESSION((Nonterminal) cond.child(2)), null);
-            return ans;
+            Operand relAns = RELATION_EXPRESSION((Nonterminal) cond.child(0));
+            Operand addAns = ADD_EXPRESSION((Nonterminal) cond.child(2));
+            if (relAns instanceof InstNumber && addAns instanceof InstNumber) {
+                int x1 = ((InstNumber) relAns).number;
+                int x2 = ((InstNumber) addAns).number;
+                int y;
+                if (op == OperatorType.LESS) y = x1 < x2 ? 0 : 1;
+                else if (op == OperatorType.LESS_EQ) y = x1 <= x2 ? 0 : 1;
+                else if (op == OperatorType.GREATER) y = x1 > x2 ? 0 : 1;
+                else y = x1 >= x2 ? 0 : 1;
+                return new InstNumber(y);
+            }
+            else {
+                VirtualReg ans = newReg();
+                newQuater(op, ans, relAns, addAns, null);
+                return ans;
+            }
         }
     }
 }
