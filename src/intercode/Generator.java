@@ -522,7 +522,7 @@ public class Generator {
             }
             // 不完全取地址，返回仍是一个地址
             else {
-                newQuater(OperatorType.ADD, arrAns, getVarReg(ident), linearOffset, null);
+                newQuater(OperatorType.ADD_ADDR, arrAns, getVarReg(ident), linearOffset, null);
                 arrAns.isAddr = true;
             }
             return arrAns;

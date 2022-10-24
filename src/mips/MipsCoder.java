@@ -95,7 +95,7 @@ public class MipsCoder {
         Wrap<String> curCallFuncName = new Wrap<>(null);
         inter.forEach(p -> {
             OperatorType op = p.get().op;
-//            addMips("\n# %s", op.name());
+            addMips("# %s", op.name());
             switch (op) {
                 case FUNC:
                     addMips("jr $ra");
@@ -165,12 +165,14 @@ public class MipsCoder {
                 case ALLOC:
                     addRegMips(String.format("add @t, $sp, %d", allocInfo.getVregOffset(p.get().target) + 4), p.get());
                     break;
+                case ALLOC_STR:
+                    break;
                 case GET_ARRAY: {
                     // @t = @x1[@x2]
                     Operand offset = p.get().x2;
                     if (offset instanceof InstNumber) {
-                        int offsetByte = ((InstNumber) offset).number * 4;
-                        addRegMips(String.format("lw @t, %d(@x1)", offsetByte), p.get());
+                        ((InstNumber) offset).number *= 4;
+                        addRegMips("lw @t, @x2(@x1)", p.get());
                     }
                     else {
                         addRegMips("sll $t9, @x2, 2", p.get());
@@ -183,7 +185,7 @@ public class MipsCoder {
                     // @t[@x1] = @x2，@t 在这里不会被改变，因此不要使用含有 @t 的 addRegMips
                     VirtualReg baseVreg = p.get().target;
                     String baseRealReg;
-                    if (baseVreg.realReg >= 0)  baseRealReg = MipsUtil.getRegName(baseVreg.realReg);
+                    if (baseVreg.realReg >= 0) baseRealReg = MipsUtil.getRegName(baseVreg.realReg);
                     else {
                         baseRealReg = "$t8";
                         addMips("lw $t8, %d($sp)", allocInfo.getVregOffset(baseVreg));
@@ -209,6 +211,18 @@ public class MipsCoder {
                     }
                     break;
                 }
+                case ADD_ADDR:
+                    assert p.get().target.isAddr;
+                    assert p.get().x1 instanceof VirtualReg && ((VirtualReg) p.get().x1).isAddr;
+                    if (p.get().x2 instanceof InstNumber) {
+                        ((InstNumber) p.get().x2).number *= 4;
+                        addRegMips("add @t, @x1, @x2", p.get());
+                    }
+                    else if (p.get().x2 instanceof VirtualReg) {
+                        addRegMips("sll $t9, @x2, 2", p.get());
+                        addRegMips("add @t, @x1, $t9", p.get());
+                    }
+                    break;
                 case ADD:
                     addRegMips("add @t, @x1, @x2", p.get());
                     break;
@@ -254,7 +268,14 @@ public class MipsCoder {
                 case NEG:
                     addRegMips("sub @t, $zero, @x1", p.get());
                     break;
+                case SHIFT_LEFT:
+                    addRegMips("sll @t, @x1, @x2", p.get());
+                    break;
+                case SHIFT_RIGHT:
+                    addRegMips("srl @t, @x1, @x2", p.get());
+                    break;
                 case NOT:
+                    addRegMips("xor @t, @t, 1", p.get());
                     break;
                 case EQ:
                     addRegMips("seq @t, @x1, @x2", p.get());
