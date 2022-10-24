@@ -35,7 +35,7 @@ class MergeCond {
                     break;
                 case LESS:
                     if (p.get(1).op == IF) p.get(1).op = IF_LESS;
-                    else if (p.get(1).op == IF_NOT) p.get(1).op = IF_GREATER;
+                    else if (p.get(1).op == IF_NOT) p.get(1).op = IF_GREATER_EQ;
                     else break;
                     p.get(1).x1 = p.get().x1;
                     p.get(1).x2 = p.get().x2;
@@ -43,7 +43,7 @@ class MergeCond {
                     break;
                 case LESS_EQ:
                     if (p.get(1).op == IF) p.get(1).op = IF_LESS_EQ;
-                    else if (p.get(1).op == IF_NOT) p.get(1).op = IF_GREATER_EQ;
+                    else if (p.get(1).op == IF_NOT) p.get(1).op = IF_GREATER;
                     else break;
                     p.get(1).x1 = p.get().x1;
                     p.get(1).x2 = p.get().x2;
@@ -51,7 +51,7 @@ class MergeCond {
                     break;
                 case GREATER:
                     if (p.get(1).op == IF) p.get(1).op = IF_GREATER;
-                    else if (p.get(1).op == IF_NOT) p.get(1).op = IF_LESS;
+                    else if (p.get(1).op == IF_NOT) p.get(1).op = IF_LESS_EQ;
                     else break;
                     p.get(1).x1 = p.get().x1;
                     p.get(1).x2 = p.get().x2;
@@ -59,7 +59,7 @@ class MergeCond {
                     break;
                 case GREATER_EQ:
                     if (p.get(1).op == IF) p.get(1).op = IF_GREATER_EQ;
-                    else if (p.get(1).op == IF_NOT) p.get(1).op = IF_LESS_EQ;
+                    else if (p.get(1).op == IF_NOT) p.get(1).op = IF_LESS;
                     else break;
                     p.get(1).x1 = p.get().x1;
                     p.get(1).x2 = p.get().x2;
