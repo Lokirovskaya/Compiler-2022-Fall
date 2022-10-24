@@ -8,8 +8,8 @@ import intercode.Quaternion;
 
 import static intercode.Quaternion.OperatorType.*;
 
-// 如果 x1 是立即数，x2 是 vreg，将其交换，不符合交换律的，在 MipsCoder 中操作
-class SwapOperand {
+// Mips 有些指令不允许 x1 是立即数，x2 是寄存器，这里解决部分简单的情况，复杂的情况（如 sub, div）在最终代码生成中解决
+class RearrangeInst {
     public static void run(InterCode inter) {
         inter.forEach(p -> {
             if (p.get().x1 instanceof InstNumber && p.get().x2 instanceof VirtualReg) {
@@ -32,6 +32,18 @@ class SwapOperand {
                 else if (op == GREATER_EQ) {
                     swapX1X2(p.get());
                     p.get().op = LESS_EQ;
+                }
+            }
+            else if (p.get().x1 instanceof InstNumber && p.get().x2 == null ) {
+                Quaternion.OperatorType op = p.get().op;
+                int x1 = ((InstNumber) p.get().x1).number;
+                if (op == IF) {
+                    if (x1 != 0) p.get().op = GOTO;
+                    else p.delete();
+                }
+                else if (op == IF_NOT) {
+                    if (x1 == 0) p.get().op = GOTO;
+                    else p.delete();
                 }
             }
         });

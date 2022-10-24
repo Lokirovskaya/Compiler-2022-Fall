@@ -21,7 +21,7 @@ public abstract class Operand {
             if (isAddr) sb.append('&');
             if (name != null) {
                 sb.append(name);
-                if (tableID > 0) sb.append('#').append(tableID);
+                if (tableID > 0) sb.append(tableID);
             }
             else sb.append(regID);
             if (realReg >= 0) sb.append('$').append(realReg);

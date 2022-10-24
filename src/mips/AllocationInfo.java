@@ -8,13 +8,13 @@ import java.util.List;
 import java.util.Map;
 
 class AllocationInfo {
-    Map<VirtualReg, Integer> vregOffsetMap = new HashMap<>();
-    Map<String, FunctionInfo> funcMap = new HashMap<>();
+    Map<VirtualReg, Integer> vregOffsetMap = new HashMap<>(); // 所有 vreg 在自身函数栈空间中的偏移；全局 vreg 则是相对于 $gp 的偏移
+    Map<String, FunctionInfo> funcMap = new HashMap<>(); // 每个 func 的信息
 
     public static class FunctionInfo {
-        int size = 0;
+        int size = 0; // func 调用栈的大小
         String name;
-        List<VirtualReg> paramList = new ArrayList<>();
+        List<VirtualReg> paramList = new ArrayList<>(); // func 的所有参数对应的 vreg
     }
 
     Integer getVregOffset(VirtualReg vreg) {

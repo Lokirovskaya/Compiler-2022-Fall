@@ -14,6 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import static intercode.Quaternion.OperatorType.*;
+
 public class MipsCoder {
     private final InterCode inter;
     private final NodeList<String> mips = new NodeList<>();
@@ -46,7 +48,7 @@ public class MipsCoder {
     private void addRegMips(String format, Quaternion quater) {
         String regTarget = "@t", regX1 = "@x1", regX2 = "@x2", label = "@label";
         boolean saveTarget = false;
-        if (quater.target != null) {
+        if (quater.target != null && format.contains("@t")) {
             if (quater.target.realReg >= 0)
                 regTarget = MipsUtil.getRegName(quater.target.realReg);
             else {
@@ -56,7 +58,7 @@ public class MipsCoder {
         }
         if (quater.x1 instanceof InstNumber)
             regX1 = quater.x1.toString();
-        else if (quater.x1 instanceof VirtualReg) {
+        else if (quater.x1 instanceof VirtualReg && format.contains("@x1")) {
             if (((VirtualReg) quater.x1).realReg >= 0)
                 regX1 = MipsUtil.getRegName(((VirtualReg) quater.x1).realReg);
             else {
@@ -66,7 +68,7 @@ public class MipsCoder {
         }
         if (quater.x2 instanceof InstNumber)
             regX2 = quater.x2.toString();
-        else if (quater.x2 instanceof VirtualReg) {
+        else if (quater.x2 instanceof VirtualReg && format.contains("@x2")) {
             if (((VirtualReg) quater.x2).realReg >= 0)
                 regX2 = MipsUtil.getRegName(((VirtualReg) quater.x2).realReg);
             else {
@@ -92,7 +94,9 @@ public class MipsCoder {
         Wrap<Integer> curCallParamIdx = new Wrap<>(0);
         Wrap<String> curCallFuncName = new Wrap<>(null);
         inter.forEach(p -> {
-            switch (p.get().op) {
+            OperatorType op = p.get().op;
+//            addMips("\n# %s", op.name());
+            switch (op) {
                 case FUNC:
                     addMips("jr $ra");
                     addMips("func_%s:", p.get().label.name);
@@ -115,7 +119,7 @@ public class MipsCoder {
                     curCallParamIdx.set(0);
                     addMips("sw $ra, 0($sp)");
                     break;
-                case PUSH:
+                case PUSH: {
                     VirtualReg param = allocInfo.getFuncParam(curCallFuncName.get(), curCallParamIdx.get());
                     Integer offset = allocInfo.getVregOffset(param);
                     if (offset == null) {
@@ -132,6 +136,7 @@ public class MipsCoder {
                     }
                     curCallParamIdx.set(curCallParamIdx.get() + 1);
                     break;
+                }
                 case END_CALL:
                     addMips("add $sp, $sp, -%d", allocInfo.getFuncSize(curCallFuncName.get()));
                     if (curCallFuncName.get().equals("main"))
@@ -157,6 +162,53 @@ public class MipsCoder {
                     else
                         addRegMips("li @t, @x1", p.get());
                     break;
+                case ALLOC:
+                    addRegMips(String.format("add @t, $sp, %d", allocInfo.getVregOffset(p.get().target) + 4), p.get());
+                    break;
+                case GET_ARRAY: {
+                    // @t = @x1[@x2]
+                    Operand offset = p.get().x2;
+                    if (offset instanceof InstNumber) {
+                        int offsetByte = ((InstNumber) offset).number * 4;
+                        addRegMips(String.format("lw @t, %d(@x1)", offsetByte), p.get());
+                    }
+                    else {
+                        addRegMips("sll $t9, @x2, 2", p.get());
+                        addRegMips("add $t9, @x1, $t9", p.get());
+                        addRegMips("lw @t, 0($t9)", p.get());
+                    }
+                    break;
+                }
+                case SET_ARRAY: {
+                    // @t[@x1] = @x2，@t 在这里不会被改变，因此不要使用含有 @t 的 addRegMips
+                    VirtualReg baseVreg = p.get().target;
+                    String baseRealReg;
+                    if (baseVreg.realReg >= 0)  baseRealReg = MipsUtil.getRegName(baseVreg.realReg);
+                    else {
+                        baseRealReg = "$t8";
+                        addMips("lw $t8, %d($sp)", allocInfo.getVregOffset(baseVreg));
+                    }
+
+                    Operand offset = p.get().x1;
+                    if (offset instanceof InstNumber) {
+                        int offsetByte = ((InstNumber) offset).number * 4;
+                        if (p.get().x2 instanceof InstNumber) {
+                            addMips("li $t9, %d", ((InstNumber) p.get().x2).number);
+                            addMips("sw $t9, %d(%s)", offsetByte, baseRealReg);
+                        }
+                        else addRegMips(String.format("sw @x2, %d(%s)", offsetByte, baseRealReg), p.get());
+                    }
+                    else {
+                        addRegMips("sll $t9, @x1, 2", p.get());
+                        addMips("add $t8, %s, $t9", baseRealReg);
+                        if (p.get().x2 instanceof InstNumber) {
+                            addMips("li $t9, %d", ((InstNumber) p.get().x2).number);
+                            addMips("sw $t9, 0($t8)");
+                        }
+                        addRegMips("sw @x2, 0($t8)", p.get());
+                    }
+                    break;
+                }
                 case ADD:
                     addRegMips("add @t, @x1, @x2", p.get());
                     break;
@@ -170,7 +222,7 @@ public class MipsCoder {
                             addRegMips("sub @t, @x1, @x2", p.get());
                         else {
                             // 不要使用 subi 命令，它是伪指令，并且会被翻译成两条语句
-                            p.get().op = OperatorType.ADD;
+                            p.get().op = ADD;
                             p.get().x2 = new InstNumber(-((InstNumber) p.get().x2).number);
                             addRegMips("add @t, @x1, @x2", p.get());
                         }
@@ -266,8 +318,7 @@ public class MipsCoder {
                     addMips("syscall");
                     addRegMips("move @t, $v0", p.get());
                     break;
-                case PRINT_STR:
-                    //todo
+                case PRINT_STR: //todo
                     break;
                 case PRINT_CHAR:
                     if (p.get().x1 instanceof VirtualReg)
