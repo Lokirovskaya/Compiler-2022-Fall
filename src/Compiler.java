@@ -49,9 +49,8 @@ public class Compiler {
 
         Generator generator = new Generator(root, identSymbolMap);
         InterCode inter = generator.generate();
-        inter.output("inter.txt");
         Optimizer.optimize(inter);
-        inter.output("inter_opt.txt");
+        inter.output("inter.txt");
 
         MipsCoder mipsCoder = new MipsCoder(inter);
         mipsCoder.generateMips();
