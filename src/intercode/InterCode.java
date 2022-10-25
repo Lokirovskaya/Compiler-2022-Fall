@@ -16,6 +16,11 @@ public class InterCode {
     }
 
     // delegations
+
+    public Quaternion getFirst() {
+        return list.getFirst();
+    }
+
     public void addFirst(Quaternion q) {
         list.addFirst(q);
     }

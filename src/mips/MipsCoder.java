@@ -64,9 +64,9 @@ public class MipsCoder {
             else {
                 regX1 = "$t8";
                 if (((VirtualReg) quater.x1).isGlobal)
-                    addMips("lw $t8, %d($sp)", allocInfo.getVregOffset((VirtualReg) quater.x1));
-                else
                     addMips("lw $t8, %d($gp)", allocInfo.getVregOffset((VirtualReg) quater.x1));
+                else
+                    addMips("lw $t8, %d($sp)", allocInfo.getVregOffset((VirtualReg) quater.x1));
             }
         }
         if (quater.x2 instanceof InstNumber)
@@ -77,9 +77,9 @@ public class MipsCoder {
             else {
                 regX2 = "$t9";
                 if (((VirtualReg) quater.x2).isGlobal)
-                    addMips("lw $t9, %d($sp)", allocInfo.getVregOffset((VirtualReg) quater.x2));
-                else
                     addMips("lw $t9, %d($gp)", allocInfo.getVregOffset((VirtualReg) quater.x2));
+                else
+                    addMips("lw $t9, %d($sp)", allocInfo.getVregOffset((VirtualReg) quater.x2));
             }
         }
         if (quater.label != null) label = quater.label.toString();
@@ -100,7 +100,9 @@ public class MipsCoder {
     // 不会全部操作数为立即数
     // 对于 x1, x2 可交换的命令，不会 x1 为立即数，x2 为寄存器
     private void generate() {
-        addMips(".data");
+        if (inter.getFirst().op == STR_DECLARE) addMips(".data");
+        else addMips(".text");
+
         Wrap<Integer> curCallParamIdx = new Wrap<>(0);
         Wrap<String> curCallFuncName = new Wrap<>(null);
         inter.forEach(p -> {
@@ -258,24 +260,20 @@ public class MipsCoder {
                     addRegMips("mul @t, @x1, @x2", p.get());
                     break;
                 case DIV:
-                    if (p.get().x1 instanceof InstNumber) {
-                        addMips("li $t8, %d", ((InstNumber) p.get().x1).number);
-                        addRegMips("div $t8, @x2", p.get());
-                    }
-                    else {
-                        addRegMips("div @x1, @x2", p.get());
-                    }
-                    addRegMips("mflo @t", p.get());
-                    break;
                 case MOD:
                     if (p.get().x1 instanceof InstNumber) {
                         addMips("li $t8, %d", ((InstNumber) p.get().x1).number);
                         addRegMips("div $t8, @x2", p.get());
                     }
+                    if (p.get().x2 instanceof InstNumber) {
+                        addMips("li $t9, %d", ((InstNumber) p.get().x2).number);
+                        addRegMips("div @x1, $t9", p.get());
+                    }
                     else {
                         addRegMips("div @x1, @x2", p.get());
                     }
-                    addRegMips("mfhi @t", p.get());
+                    if (p.get().op == DIV) addRegMips("mflo @t", p.get());
+                    else addRegMips("mfhi @t", p.get());
                     break;
                 case NEG:
                     addRegMips("sub @t, $zero, @x1", p.get());
@@ -317,10 +315,16 @@ public class MipsCoder {
                     addRegMips("beq @x1, $zero, @label", p.get());
                     break;
                 case IF_EQ:
-                    addRegMips("beq @x1, @x2, @label", p.get());
+                    if (isZero(p.get().x2))
+                        addRegMips("beq @x1, $zero, @label", p.get());
+                    else
+                        addRegMips("beq @x1, @x2, @label", p.get());
                     break;
                 case IF_NOT_EQ:
-                    addRegMips("bne @x1, @x2, @label", p.get());
+                    if (isZero(p.get().x2))
+                        addRegMips("bne @x1, $zero, @label", p.get());
+                    else
+                        addRegMips("bne @x1, @x2, @label", p.get());
                     break;
                 case IF_LESS:
                     if (isZero(p.get().x2))
