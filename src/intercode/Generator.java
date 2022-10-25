@@ -345,9 +345,9 @@ public class Generator {
         }
         // 'printf' '(' FormatString { ',' Exp } ')' ';'
         else if (stmt.child(0).isType(PRINTF)) {
-            List<Operand> expList = stmt.children.stream()
+            List<Nonterminal> expNodeList = stmt.children.stream()
                     .filter(p -> p.isType(_EXPRESSION_))
-                    .map(e -> EXPRESSION((Nonterminal) e))
+                    .map(e -> (Nonterminal) e)
                     .collect(Collectors.toList());
             int expIdx = 0;
             StringBuilder buffer = new StringBuilder();
@@ -374,7 +374,8 @@ public class Generator {
                     assert format.charAt(i + 1) == 'd';
                     i++;
                     printAndClearBuffer.run();
-                    newQuater(OperatorType.PRINT_INT, null, expList.get(expIdx++), null, null);
+                    Operand expAns = EXPRESSION(expNodeList.get(expIdx++));
+                    newQuater(OperatorType.PRINT_INT, null, expAns, null, null);
                 }
                 else buffer.append(format.charAt(i));
             }
