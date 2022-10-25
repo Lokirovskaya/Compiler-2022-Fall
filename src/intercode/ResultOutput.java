@@ -23,7 +23,7 @@ class ResultOutput {
             else if (q.op == SET_ARRAY) sb.append(String.format("%s[%s] = %s\n", q.target, q.x1, q.x2));
             else if (q.op == ADD_ADDR) sb.append(String.format("%s = %s + [%s]\n", q.target, q.x1, q.x2));
             else if (q.op == IF) sb.append(String.format("if %s goto %s\n", q.x1, q.label));
-            else if (q.op == IF_NOT) sb.append(String.format("if_not !%s goto %s\n", q.x1, q.label));
+            else if (q.op == IF_NOT) sb.append(String.format("if_not %s goto %s\n", q.x1, q.label));
             else if (q.op == IF_EQ) sb.append(String.format("if_cond %s == %s goto %s\n", q.x1, q.x2, q.label));
             else if (q.op == IF_NOT_EQ) sb.append(String.format("if_cond %s != %s goto %s\n", q.x1, q.x2, q.label));
             else if (q.op == IF_LESS) sb.append(String.format("if_cond %s < %s goto %s\n", q.x1, q.x2, q.label));

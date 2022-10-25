@@ -607,10 +607,10 @@ public class Generator {
                 int x1 = ((InstNumber) relAns).number;
                 int x2 = ((InstNumber) addAns).number;
                 int y;
-                if (op == OperatorType.LESS) y = x1 < x2 ? 0 : 1;
-                else if (op == OperatorType.LESS_EQ) y = x1 <= x2 ? 0 : 1;
-                else if (op == OperatorType.GREATER) y = x1 > x2 ? 0 : 1;
-                else y = x1 >= x2 ? 0 : 1;
+                if (op == OperatorType.LESS) y = x1 < x2 ? 1 : 0;
+                else if (op == OperatorType.LESS_EQ) y = x1 <= x2 ? 1 : 0;
+                else if (op == OperatorType.GREATER) y = x1 > x2 ? 1 : 0;
+                else y = x1 >= x2 ? 1 : 0;
                 return new InstNumber(y);
             }
             else {

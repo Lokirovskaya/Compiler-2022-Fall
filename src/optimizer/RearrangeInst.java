@@ -34,6 +34,7 @@ class RearrangeInst {
                     p.get().op = LESS_EQ;
                 }
             }
+            // todo: 放到单独的文件中去
             else if (p.get().x1 instanceof InstNumber && p.get().x2 == null ) {
                 Quaternion.OperatorType op = p.get().op;
                 int x1 = ((InstNumber) p.get().x1).number;
