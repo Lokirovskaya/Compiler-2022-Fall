@@ -63,7 +63,10 @@ public class MipsCoder {
                 regX1 = MipsUtil.getRegName(((VirtualReg) quater.x1).realReg);
             else {
                 regX1 = "$t8";
-                addMips("lw $t8, %d($sp)", allocInfo.getVregOffset((VirtualReg) quater.x1));
+                if (((VirtualReg) quater.x1).isGlobal)
+                    addMips("lw $t8, %d($sp)", allocInfo.getVregOffset((VirtualReg) quater.x1));
+                else
+                    addMips("lw $t8, %d($gp)", allocInfo.getVregOffset((VirtualReg) quater.x1));
             }
         }
         if (quater.x2 instanceof InstNumber)
@@ -73,7 +76,10 @@ public class MipsCoder {
                 regX2 = MipsUtil.getRegName(((VirtualReg) quater.x2).realReg);
             else {
                 regX2 = "$t9";
-                addMips("lw $t9, %d($sp)", allocInfo.getVregOffset((VirtualReg) quater.x2));
+                if (((VirtualReg) quater.x2).isGlobal)
+                    addMips("lw $t9, %d($sp)", allocInfo.getVregOffset((VirtualReg) quater.x2));
+                else
+                    addMips("lw $t9, %d($gp)", allocInfo.getVregOffset((VirtualReg) quater.x2));
             }
         }
         if (quater.label != null) label = quater.label.toString();
@@ -82,21 +88,29 @@ public class MipsCoder {
                 .replace("@x1", regX1)
                 .replace("@x2", regX2)
                 .replace("@label", label));
-        if (saveTarget) addMips("sw %s, %d($sp)", regTarget, allocInfo.getVregOffset(quater.target));
+        if (saveTarget) {
+            if (quater.target.isGlobal)
+                addMips("sw %s, %d($gp)", regTarget, allocInfo.getVregOffset(quater.target));
+            else
+                addMips("sw %s, %d($sp)", regTarget, allocInfo.getVregOffset(quater.target));
+        }
     }
 
     // 翻译时保证：
     // 不会全部操作数为立即数
     // 对于 x1, x2 可交换的命令，不会 x1 为立即数，x2 为寄存器
     private void generate() {
-        addMips(".text");
-
+        addMips(".data");
         Wrap<Integer> curCallParamIdx = new Wrap<>(0);
         Wrap<String> curCallFuncName = new Wrap<>(null);
         inter.forEach(p -> {
             OperatorType op = p.get().op;
-            addMips("# %s", op.name());
+//            addMips("# %s", op.name());
             switch (op) {
+                case STR_DECLARE:
+                    addMips("str_%d: .asciiz \"%s\"", ((InstNumber) p.get().x1).number, p.get().label);
+                    if (p.get(1).op != STR_DECLARE) addMips(".text");
+                    break;
                 case FUNC:
                     addMips("jr $ra");
                     addMips("func_%s:", p.get().label.name);
@@ -164,8 +178,6 @@ public class MipsCoder {
                     break;
                 case ALLOC:
                     addRegMips(String.format("add @t, $sp, %d", allocInfo.getVregOffset(p.get().target) + 4), p.get());
-                    break;
-                case ALLOC_STR:
                     break;
                 case GET_ARRAY: {
                     // @t = @x1[@x2]
@@ -339,7 +351,10 @@ public class MipsCoder {
                     addMips("syscall");
                     addRegMips("move @t, $v0", p.get());
                     break;
-                case PRINT_STR: //todo
+                case PRINT_STR:
+                    addMips("la $a0, str_%d", ((InstNumber) p.get().x1).number);
+                    addMips("li $v0, 4");
+                    addMips("syscall");
                     break;
                 case PRINT_CHAR:
                     if (p.get().x1 instanceof VirtualReg)

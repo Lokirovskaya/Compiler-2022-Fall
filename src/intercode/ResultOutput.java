@@ -39,7 +39,7 @@ class ResultOutput {
             else if (q.op == GREATER_EQ) sb.append(String.format("%s = %s >= %s\n", q.target, q.x1, q.x2));
             else if (q.op == GETINT) sb.append(String.format("%s = getint\n", q.target));
             else if (q.op == PRINT_INT) sb.append(String.format("printi %s\n", q.x1));
-            else if (q.op == PRINT_STR) sb.append(String.format("prints %s\n", q.x1));
+            else if (q.op == PRINT_STR) sb.append(String.format("prints str_%s\n", q.x1));
             else if (q.op == PRINT_CHAR) sb.append(String.format("printc %s\n", q.x1));
             else if (q.op == FUNC) sb.append(String.format("\nfunc %s\n", q.label));
             else if (q.op == LABEL) sb.append(String.format("%s:\n", q.label));
@@ -52,7 +52,7 @@ class ResultOutput {
             else if (q.op == PARAM) sb.append(String.format("param %s\n", q.target));
             else if (q.op == PARAM_ARRAY) sb.append(String.format("param[] %s\n", q.target));
             else if (q.op == ALLOC) sb.append(String.format("%s = alloc %s\n", q.target, q.x1));
-            else if (q.op == ALLOC_STR) sb.append(String.format("%s = alloc_str \"%s\"\n", q.target, q.label));
+            else if (q.op == STR_DECLARE) sb.append(String.format("str_%s = \"%s\"\n", q.x1, q.label));
         });
         Files.write(Paths.get(filename), sb.toString().trim().getBytes(StandardCharsets.UTF_8));
     }

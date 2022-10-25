@@ -9,19 +9,10 @@ import java.util.function.Consumer;
 
 public class InterCode {
     private final NodeList<Quaternion> list = new NodeList<>();
-    private int regIdx = 1;
-    private int labelIdx = 1;
+
 
     public void output(String filename) throws IOException {
         ResultOutput.output(this, filename);
-    }
-
-    public VirtualReg newReg() {
-        return new VirtualReg(regIdx++);
-    }
-
-    public Label newLabel() {
-        return new Label("label_" + labelIdx++);
     }
 
     // delegations

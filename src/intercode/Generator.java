@@ -20,8 +20,10 @@ public class Generator {
     private final InterCode inter = new InterCode();
     private final TreeNode syntaxTreeRoot;
     private final Map<Token, Symbol> identSymbolMap;
+    private int regIdx = 1;
+    private int labelIdx = 1;
+    private int stringLabelIdx = 1;
     private static final VirtualReg returnReg = new VirtualReg(0);
-    private final Map<String, VirtualReg> stringConstRegMap = new HashMap<>();
     private final Stack<Pair<Label, Label>> whileLabelsList = new Stack<>();
 
     public Generator(TreeNode syntaxTreeRoot, Map<Token, Symbol> identSymbolMap) {
@@ -30,9 +32,6 @@ public class Generator {
     }
 
     public InterCode generate() {
-        newQuater(OperatorType.CALL, null, null, null, new Label("main"));
-        newQuater(OperatorType.END_CALL, null, null, null, new Label("main"));
-        newQuater(OperatorType.EXIT, null, null, null, null);
         COMPILE_UNIT(syntaxTreeRoot);
         Optimizer.MipsPreprocess(inter);
         return inter;
@@ -45,32 +44,15 @@ public class Generator {
     }
 
     private VirtualReg newReg() {
-        return inter.newReg();
+        return new VirtualReg(regIdx++);
     }
 
     private Label newLabel() {
-        return inter.newLabel();
+        return new Label("label_" + labelIdx++);
     }
 
     private void newQuater(Quaternion.OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
         inter.addLast(new Quaternion(op, target, x1, x2, label));
-    }
-
-    private void newQuaterFirst(Quaternion.OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
-        inter.addFirst(new Quaternion(op, target, x1, x2, label));
-    }
-
-    // 如果有重复的 str，就不重复 alloc 了
-    private VirtualReg allocStringConst(String str) {
-        if (stringConstRegMap.containsKey(str)) return stringConstRegMap.get(str);
-        else {
-            VirtualReg strReg = newReg();
-            strReg.isAddr = true;
-            strReg.isGlobal = true;
-            newQuaterFirst(OperatorType.ALLOC_STR, strReg, null, null, new Label(str));
-            stringConstRegMap.put(str, strReg);
-            return strReg;
-        }
     }
 
     private Symbol.Var getVar(Token varIdent) {
@@ -180,7 +162,7 @@ public class Generator {
         assert init.isType(_VAR_INIT_VALUE_) || init.isType(_CONST_INIT_VALUE_);
         if (!target.isAddr) {
             Operand expAns = EXPRESSION((Nonterminal) init.child(0));
-            if (target.isGlobal) newQuaterFirst(OperatorType.SET, target, expAns, null, null);
+            if (target.isGlobal) newQuater(OperatorType.SET, target, expAns, null, null);
             else newQuater(OperatorType.SET, target, expAns, null, null);
         }
         else {
@@ -188,7 +170,7 @@ public class Generator {
             findChildExpressions(init, initExpList);
             for (int i = 0; i < initExpList.size(); i++) {
                 if (target.isGlobal)
-                    newQuaterFirst(OperatorType.SET_ARRAY, target, new InstNumber(i), initExpList.get(i), null);
+                    newQuater(OperatorType.SET_ARRAY, target, new InstNumber(i), initExpList.get(i), null);
                 else newQuater(OperatorType.SET_ARRAY, target, new InstNumber(i), initExpList.get(i), null);
             }
         }
@@ -209,8 +191,17 @@ public class Generator {
         }
     }
 
+    private boolean firstFunc = true;
+
     private void FUNCTION_DEFINE(Nonterminal def) {
         assert def.isType(_FUNCTION_DEFINE_) || def.isType(_MAIN_FUNCTION_DEFINE_);
+        if (firstFunc) {
+            newQuater(OperatorType.CALL, null, null, null, new Label("main"));
+            newQuater(OperatorType.END_CALL, null, null, null, new Label("main"));
+            newQuater(OperatorType.EXIT, null, null, null, null);
+            firstFunc = false;
+        }
+
         if (def.isType(_MAIN_FUNCTION_DEFINE_)) {
             newQuater(OperatorType.FUNC, null, null, null, new Label("main"));
         }
@@ -368,8 +359,11 @@ public class Generator {
                         newQuater(OperatorType.PRINT_CHAR, null, new InstNumber(str.charAt(0)), null, null);
                     else if (str.equals("\\n"))
                         newQuater(OperatorType.PRINT_CHAR, null, new InstNumber('\n'), null, null);
-                    else
-                        newQuater(OperatorType.PRINT_STR, null, allocStringConst(str), null, null);
+                    else {
+                        int curStringIdx = stringLabelIdx++;
+                        inter.addFirst(new Quaternion(OperatorType.STR_DECLARE, null, new InstNumber(curStringIdx), null, new Label(str)));
+                        newQuater(OperatorType.PRINT_STR, null, new InstNumber(curStringIdx), null, null);
+                    }
                     buffer.delete(0, buffer.length());
                 }
             };
