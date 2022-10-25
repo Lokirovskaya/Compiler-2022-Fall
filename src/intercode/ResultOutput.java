@@ -50,7 +50,6 @@ class ResultOutput {
             else if (q.op == END_CALL) sb.append("end_call\n");
             else if (q.op == PUSH) sb.append(String.format("push %s\n", q.x1));
             else if (q.op == PARAM) sb.append(String.format("param %s\n", q.target));
-            else if (q.op == PARAM_ARRAY) sb.append(String.format("param[] %s\n", q.target));
             else if (q.op == ALLOC) sb.append(String.format("%s = alloc %s\n", q.target, q.x1));
             else if (q.op == STR_DECLARE) sb.append(String.format("str_%s = \"%s\"\n", q.x1, q.label));
         });

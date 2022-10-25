@@ -14,10 +14,9 @@ class Allocator {
 
         Wrap<AllocationInfo.FunctionInfo> curFuncInfo = new Wrap<>(null);
         Wrap<Integer> curOffset = new Wrap<>(0); // 0($sp) 的位置保留给 $ra
-
-
+        Wrap<Integer> curGlobalOffset = new Wrap<>(-4); // $gp 空间，不需要留 $ra
         inter.forEach(p -> {
-            // 函数区
+            // 函数
             // 遇到下一个 func，结算当前 func
             if (p.get().op == FUNC) {
                 if (curFuncInfo.get() != null) {
@@ -30,25 +29,34 @@ class Allocator {
                 return;
             }
 
-            // 局部变量区
+            // 变量
             // 对任意四元式中 vreg 的分配，跳过立即数、全局 vreg 和已分配寄存器的 vreg
             for (Operand reg : new Operand[]{p.get().target, p.get().x1, p.get().x2}) {
                 if (reg instanceof VirtualReg && ((VirtualReg) reg).realReg < 0) {
                     if (!allocInfo.vregOffsetMap.containsKey(reg)) {
-                        curOffset.set(curOffset.get() + 4);
-                        allocInfo.vregOffsetMap.put((VirtualReg) reg, curOffset.get());
+                        if (((VirtualReg) reg).isGlobal) {
+                            curGlobalOffset.set(curGlobalOffset.get() + 4);
+                            allocInfo.vregOffsetMap.put((VirtualReg) reg, curGlobalOffset.get());
+                        }
+                        else {
+                            curOffset.set(curOffset.get() + 4);
+                            allocInfo.vregOffsetMap.put((VirtualReg) reg, curOffset.get());
+                        }
                     }
                 }
             }
             // 记录参数对应的 vreg
-            if (p.get().op == PARAM || p.get().op == PARAM_ARRAY) {
+            if (p.get().op == PARAM) {
                 curFuncInfo.get().paramList.add(p.get().target);
             }
             // 分配数组空间，位置紧邻数组地址
             else if (p.get().op == ALLOC) {
                 assert p.get().x1 instanceof InstNumber;
                 int arraySize = ((InstNumber) p.get().x1).number * 4;
-                curOffset.set(curOffset.get() + arraySize);
+                if (p.get().target.isGlobal)
+                    curGlobalOffset.set(curGlobalOffset.get() + arraySize);
+                else
+                    curOffset.set(curOffset.get() + arraySize);
             }
         });
         curFuncInfo.get().size = curOffset.get() + 4;
