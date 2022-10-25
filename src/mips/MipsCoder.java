@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Stack;
 
 import static intercode.Quaternion.OperatorType.*;
 
@@ -103,8 +104,6 @@ public class MipsCoder {
         if (inter.getFirst().op == STR_DECLARE) addMips(".data");
         else addMips(".text");
 
-        Wrap<Integer> curCallParamIdx = new Wrap<>(0);
-        Wrap<String> curCallFuncName = new Wrap<>(null);
         inter.forEach(p -> {
             OperatorType op = p.get().op;
 //            addMips("# %s", op.name());
@@ -124,47 +123,46 @@ public class MipsCoder {
                     // 什么都不用做，因为参数已经由调用者放到了记录好的位置
                     break;
                 // 对于函数的调用者：
-                // 1. 存放当前上下文的 $ra 到 0($sp) 位置
-                // 2. 依照当前 $sp 和目标函数参数的 offset，减去一整个目标函数的调用栈大小，存放目标函数需要的参数
+                // 1. 依照当前 $sp 和目标函数参数的 offset，减去一整个目标函数的调用栈大小，存放目标函数需要的参数
+                // 2. 存放当前上下文的 $ra 到 0($sp) 位置
                 // 3. 按照目标函数的调用栈大小，向小地址移动 $sp
                 // 4. jal
                 // 5. 按照目标函数的调用栈大小，恢复 $sp
                 // 6. 恢复 $ra
-                case CALL:
-                    curCallFuncName.set(p.get().label.name);
-                    curCallParamIdx.set(0);
-                    addMips("sw $ra, 0($sp)");
-                    break;
                 case PUSH: {
-                    VirtualReg param = allocInfo.getFuncParam(curCallFuncName.get(), curCallParamIdx.get());
+                    String funcName = p.get().label.name;
+                    int paramIdx = ((InstNumber) p.get().x2).number;
+                    VirtualReg param = allocInfo.getFuncParam(funcName, paramIdx);
                     Integer offset = allocInfo.getVregOffset(param);
                     if (offset == null) {
                         assert param.realReg >= 0;
                         addRegMips(String.format("move %s, @x1", MipsUtil.getRegName(param.realReg)), p.get());
                     }
                     else {
-                        int curCallFuncSize = allocInfo.getFuncSize(curCallFuncName.get());
+                        int curCallFuncSize = allocInfo.getFuncSize(funcName);
                         if (p.get().x1 instanceof InstNumber) {
                             addMips("li $t8, %d", ((InstNumber) p.get().x1).number);
                             addMips("sw $t8, %d($sp)", offset - curCallFuncSize);
                         }
                         else addRegMips(String.format("sw @x1, %d($sp)", offset - curCallFuncSize), p.get());
                     }
-                    curCallParamIdx.set(curCallParamIdx.get() + 1);
                     break;
                 }
-                case END_CALL:
-                    addMips("add $sp, $sp, -%d", allocInfo.getFuncSize(curCallFuncName.get()));
-                    if (curCallFuncName.get().equals("main"))
+                case CALL: {
+                    String funcName = p.get().label.name;
+                    if (funcName.equals("main")) {
+                        addMips("add $sp, $sp, -%d", allocInfo.getFuncSize(funcName));
                         addMips("jal func_main");
+                    }
                     else {
-                        addMips("jal func_%s", curCallFuncName.get());
-                        addMips("add $sp, $sp, %d", allocInfo.getFuncSize(curCallFuncName.get()));
+                        addMips("sw $ra, 0($sp)");
+                        addMips("add $sp, $sp, -%d", allocInfo.getFuncSize(funcName));
+                        addMips("jal func_%s", funcName);
+                        addMips("add $sp, $sp, %d", allocInfo.getFuncSize(funcName));
                         addMips("lw $ra, 0($sp)");
                     }
-                    curCallParamIdx.set(0);
-                    curCallFuncName.set(null);
                     break;
+                }
                 case EXIT:
                     addMips("li $v0, 10");
                     addMips("syscall");
@@ -297,7 +295,7 @@ public class MipsCoder {
                     addRegMips("slt @t, @x1, @x2", p.get());
                     break;
                 case LESS_EQ:
-                    addRegMips("sle @t1, @x1, @x2", p.get());
+                    addRegMips("sle @t, @x1, @x2", p.get());
                     break;
                 case GREATER:
                     addRegMips("sgt @t, @x1, @x2", p.get());

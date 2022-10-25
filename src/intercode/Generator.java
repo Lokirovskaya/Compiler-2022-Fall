@@ -197,7 +197,6 @@ public class Generator {
         assert def.isType(_FUNCTION_DEFINE_) || def.isType(_MAIN_FUNCTION_DEFINE_);
         if (firstFunc) {
             newQuater(OperatorType.CALL, null, null, null, new Label("main"));
-            newQuater(OperatorType.END_CALL, null, null, null, new Label("main"));
             newQuater(OperatorType.EXIT, null, null, null, null);
             firstFunc = false;
         }
@@ -345,9 +344,9 @@ public class Generator {
         }
         // 'printf' '(' FormatString { ',' Exp } ')' ';'
         else if (stmt.child(0).isType(PRINTF)) {
-            List<Nonterminal> expNodeList = stmt.children.stream()
+            List<Operand> expAnsList = stmt.children.stream()
                     .filter(p -> p.isType(_EXPRESSION_))
-                    .map(e -> (Nonterminal) e)
+                    .map(e -> EXPRESSION((Nonterminal) e))
                     .collect(Collectors.toList());
             int expIdx = 0;
             StringBuilder buffer = new StringBuilder();
@@ -374,8 +373,7 @@ public class Generator {
                     assert format.charAt(i + 1) == 'd';
                     i++;
                     printAndClearBuffer.run();
-                    Operand expAns = EXPRESSION(expNodeList.get(expIdx++));
-                    newQuater(OperatorType.PRINT_INT, null, expAns, null, null);
+                    newQuater(OperatorType.PRINT_INT, null, expAnsList.get(expIdx++), null, null);
                 }
                 else buffer.append(format.charAt(i));
             }
@@ -449,17 +447,21 @@ public class Generator {
         else if (exp.child(0).isType(IDENTIFIER)) {
             Token ident = (Token) exp.child(0);
             Symbol.Function func = getFunc(ident);
-            newQuater(OperatorType.CALL, null, null, null, new Label(func.name));
             if (exp.child(2).isType(_FUNCTION_CALL_PARAM_LIST_)) {
+                int idx = 0;
                 for (TreeNode p : ((Nonterminal) exp.child(2)).children) {
                     if (p.isType(_EXPRESSION_)) {
                         Operand paramAns = EXPRESSION((Nonterminal) p);
-                        newQuater(OperatorType.PUSH, null, paramAns, null, null);
+                        newQuater(OperatorType.PUSH, null, paramAns, new InstNumber(idx++), new Label(func.name));
                     }
                 }
             }
-            newQuater(OperatorType.END_CALL, null, null, null, null);
-            if (!func.isVoid) return returnReg;
+            newQuater(OperatorType.CALL, null, null, null, new Label(func.name));
+            if (!func.isVoid) {
+                VirtualReg ans = newReg();
+                newQuater(OperatorType.SET, ans, returnReg, null, null);
+                return ans;
+            }
             else return null;
         }
         // UnaryExp → UnaryOp UnaryExp, UnaryOp → '+' | '−' | '!'

@@ -16,7 +16,7 @@ public class Quaternion {
 
     public enum OperatorType {
         ADD, SUB, MULT, DIV, MOD, NEG, NOT, EQ, NOT_EQ, LESS, LESS_EQ, GREATER, GREATER_EQ,
-        IF, GOTO, FUNC, CALL, END_CALL, RETURN, EXIT,
+        IF, GOTO, FUNC, CALL, RETURN, EXIT,
         SET, GET_ARRAY, SET_ARRAY, ADD_ADDR,
         LABEL, PUSH, PARAM, ALLOC, STR_DECLARE,
         GETINT, PRINT_STR, PRINT_INT, PRINT_CHAR,
