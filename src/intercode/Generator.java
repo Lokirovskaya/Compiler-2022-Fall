@@ -153,25 +153,27 @@ public class Generator {
         // if def has an init value
         TreeNode initVal = def.child(def.children.size() - 1);
         if (initVal.isType(_VAR_INIT_VALUE_) || initVal.isType(_CONST_INIT_VALUE_)) {
-            VAR_INIT_VALUE((Nonterminal) initVal, getVarReg(ident));
+            getVarReg(ident); // alloc vreg，如果是常量，事实上这个 vreg 会被丢弃
+            VAR_INIT_VALUE((Nonterminal) initVal, var);
         }
     }
 
     // target 是继承属性，被赋值的寄存器
-    private void VAR_INIT_VALUE(Nonterminal init, VirtualReg target) {
+    private void VAR_INIT_VALUE(Nonterminal init, Symbol.Var var) {
         assert init.isType(_VAR_INIT_VALUE_) || init.isType(_CONST_INIT_VALUE_);
-        if (!target.isAddr) {
+        if (!var.isArray()) {
             Operand expAns = EXPRESSION((Nonterminal) init.child(0));
-            if (target.isGlobal) newQuater(OperatorType.SET, target, expAns, null, null);
-            else newQuater(OperatorType.SET, target, expAns, null, null);
+            if (var.isConst) var.constVal = (InstNumber) expAns;
+            else newQuater(OperatorType.SET, var.reg, expAns, null, null);
         }
         else {
             List<Operand> initExpList = new ArrayList<>();
             findChildExpressions(init, initExpList);
             for (int i = 0; i < initExpList.size(); i++) {
-                if (target.isGlobal)
-                    newQuater(OperatorType.SET_ARRAY, target, new InstNumber(i), initExpList.get(i), null);
-                else newQuater(OperatorType.SET_ARRAY, target, new InstNumber(i), initExpList.get(i), null);
+                newQuater(OperatorType.SET_ARRAY, var.reg, new InstNumber(i), initExpList.get(i), null);
+            }
+            if (var.isConst) {
+                var.constArrayVal = initExpList.stream().map(e -> (InstNumber) e).collect(Collectors.toList());
             }
         }
     }
@@ -506,11 +508,27 @@ public class Generator {
         assert exp.isType(_LEFT_VALUE_);
         Token ident = (Token) exp.child(0);
         Symbol.Var var = getVar(ident);
-        if (var.isArray()) {
+        if (!var.isArray()) {
+            if (var.isConst) return var.constVal;
+            else return getVarReg(ident);
+        }
+        else {
+            // Ident '[' Exp ']' '[' Exp ']'
             List<Operand> offset = exp.children.stream()
                     .filter(p -> p.isType(_EXPRESSION_))
                     .map(e -> EXPRESSION((Nonterminal) e))
                     .collect(Collectors.toList());
+            if (var.dimension == 1) {
+                if (var.isConst && offset.get(0) instanceof InstNumber) {
+                    return var.constArrayVal.get(((InstNumber) offset.get(0)).number);
+                }
+            }
+            else if (var.dimension == 2) {
+                if (var.isConst && offset.get(0) instanceof InstNumber && offset.get(1) instanceof InstNumber) {
+                    int idx = ((InstNumber) offset.get(0)).number * var.sizeOfDim1.number + ((InstNumber) offset.get(1)).number;
+                    return var.constArrayVal.get(idx);
+                }
+            }
             Operand linearOffset = getLinearOffset(var, offset);
             VirtualReg arrAns = newReg();
             // 完全取地址
@@ -524,7 +542,6 @@ public class Generator {
             }
             return arrAns;
         }
-        else return getVarReg(ident);
     }
 
     private Operand NUMBER(Nonterminal exp) {
