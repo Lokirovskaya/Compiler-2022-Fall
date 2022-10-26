@@ -29,6 +29,10 @@ class AllocationInfo {
         return funcMap.get(funcName).paramList.get(idx);
     }
 
+    int getFuncParamCount(String funcName) {
+        return funcMap.get(funcName).paramList.size();
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

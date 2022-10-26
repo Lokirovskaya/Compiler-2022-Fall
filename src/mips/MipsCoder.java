@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Stack;
 
 import static intercode.Quaternion.OperatorType.*;
 
@@ -42,23 +43,14 @@ public class MipsCoder {
         mips.addLast(String.format(format, args));
     }
 
-    // 将 vreg 加载到 reg 中，返回 reg；如果 vreg.realReg >= 0，返回 realReg
-    private String loadVreg(VirtualReg vreg, String reg) {
+    // 获取 vreg 对应的 reg；如果没有预先分配，就将 tempReg 分配给它
+    private String getReg(VirtualReg vreg, String tempReg) {
         if (vreg.realReg >= 0) return MipsUtil.getRegName(vreg.realReg);
         if (vreg.isGlobal)
-            addMips("lw %s, %d($gp)", reg, allocInfo.getVregOffset(vreg));
+            addMips("lw %s, %d($gp)", tempReg, allocInfo.getVregOffset(vreg));
         else
-            addMips("lw %s, %d($sp)", reg, allocInfo.getVregOffset(vreg));
-        return reg;
-    }
-
-    // 将 reg 的内容保存到 vreg 对应的栈上空间（若 vreg.realReg >= 0，什么都不做）
-    private void saveVreg(VirtualReg vreg, String reg) {
-        if (vreg.realReg >= 0) return;
-        if (vreg.isGlobal)
-            addMips("sw %s, %d($gp)", reg, allocInfo.getVregOffset(vreg));
-        else
-            addMips("sw %s, %d($sp)", reg, allocInfo.getVregOffset(vreg));
+            addMips("lw %s, %d($sp)", tempReg, allocInfo.getVregOffset(vreg));
+        return tempReg;
     }
 
     // 涉及到虚寄存器的语句，对未分配的虚寄存器进行 lw/sw，对已分配的虚寄存器进行直接翻译
@@ -72,19 +64,19 @@ public class MipsCoder {
         }
         if (format.contains("@x1")) {
             if (quater.x1 instanceof VirtualReg)
-                x1RegInst = loadVreg((VirtualReg) quater.x1, "$t8");
+                x1RegInst = getReg((VirtualReg) quater.x1, "$t8");
             else
                 x1RegInst = String.valueOf(((InstNumber) quater.x1).number);
         }
         if (format.contains("@x2")) {
             if (quater.x2 instanceof VirtualReg)
-                x2RegInst = loadVreg((VirtualReg) quater.x2, "$t9");
+                x2RegInst = getReg((VirtualReg) quater.x2, "$t9");
             else
                 x2RegInst = String.valueOf(((InstNumber) quater.x2).number);
         }
         if (format.contains("@rx1")) {
             if (quater.x1 instanceof VirtualReg)
-                x1Reg = loadVreg((VirtualReg) quater.x1, "$t8");
+                x1Reg = getReg((VirtualReg) quater.x1, "$t8");
             else {
                 addMips("li $t8, %d", ((InstNumber) quater.x1).number);
                 x1Reg = "$t8";
@@ -92,7 +84,7 @@ public class MipsCoder {
         }
         if (format.contains("@rx2")) {
             if (quater.x2 instanceof VirtualReg)
-                x2Reg = loadVreg((VirtualReg) quater.x2, "$t9");
+                x2Reg = getReg((VirtualReg) quater.x2, "$t9");
             else {
                 addMips("li $t9, %d", ((InstNumber) quater.x2).number);
                 x2Reg = "$t9";
@@ -108,14 +100,21 @@ public class MipsCoder {
                 .replace("@rx2", x2Reg)
                 .replace("@label", label));
         if (format.contains("@t")) {
-            saveVreg(quater.target, tReg);
+            if (quater.target.realReg < 0) {
+                if (quater.target.isGlobal)
+                    addMips("sw %s, %d($gp)", tReg, allocInfo.getVregOffset(quater.target));
+                else
+                    addMips("sw %s, %d($sp)", tReg, allocInfo.getVregOffset(quater.target));
+            }
         }
     }
+
 
     private void generate() {
         if (inter.getFirst().op == STR_DECLARE) addMips(".data");
         else addMips(".text");
 
+        Stack<Operand> paramStack = new Stack<>();
         inter.forEach(p -> {
             OperatorType op = p.get().op;
 //            addMips("# %s", op.name());
@@ -134,6 +133,9 @@ public class MipsCoder {
                 case PARAM:
                     // 什么都不用做，因为参数已经由调用者放到了记录好的位置
                     break;
+                case PUSH:
+                    paramStack.push(p.get().x1);
+                    break;
                 // 对于函数的调用者：
                 // 1. 依照当前 $sp 和目标函数参数的 offset，减去一整个目标函数的调用栈大小，存放目标函数需要的参数
                 // 2. 存放当前上下文的 $ra 到 0($sp) 位置
@@ -141,23 +143,36 @@ public class MipsCoder {
                 // 4. jal
                 // 5. 按照目标函数的调用栈大小，恢复 $sp
                 // 6. 恢复 $ra
-                case PUSH: {
-                    String funcName = p.get().label.name;
-                    int paramIdx = ((InstNumber) p.get().x2).number;
-                    VirtualReg param = allocInfo.getFuncParam(funcName, paramIdx);
-                    Integer offset = allocInfo.getVregOffset(param);
-                    if (offset == null) {
-                        assert param.realReg >= 0;
-                        addRegMips(String.format("move %s, @rx1", MipsUtil.getRegName(param.realReg)), p.get());
-                    }
-                    else {
-                        int curCallFuncSize = allocInfo.getFuncSize(funcName);
-                        addRegMips(String.format("sw @rx1, %d($sp)", offset - curCallFuncSize), p.get());
-                    }
-                    break;
-                }
                 case CALL: {
                     String funcName = p.get().label.name;
+                    int paramCount = allocInfo.getFuncParamCount(funcName);
+                    for (int i = 0; i < paramCount; i++) {
+                        VirtualReg paramDef = allocInfo.getFuncParam(funcName, paramCount - i - 1); // 形参（保留在栈上还是寄存器中）
+                        Operand paramCall = paramStack.pop(); // 实参（是 vreg 还是立即数）
+
+                        // 建立 实参 -> 形参 的传递
+                        if (paramDef.realReg >= 0) {
+                            String paramDefReg = MipsUtil.getRegName(paramDef.realReg);
+                            if (paramCall instanceof InstNumber) {
+                                addMips("li %s, %d", paramDefReg, ((InstNumber) paramCall).number);
+                            }
+                            else if (paramCall instanceof VirtualReg) {
+                                String paramCallReg = getReg((VirtualReg) paramCall, "$t8");
+                                addMips("move %s, %s", paramDefReg, paramCallReg);
+                            }
+                        }
+                        else {
+                            int paramDefOffset = allocInfo.getVregOffset(paramDef) - allocInfo.getFuncSize(funcName);
+                            if (paramCall instanceof InstNumber) {
+                                addMips("li $t8, %d", ((InstNumber) paramCall).number);
+                                addMips("sw $t8, %d($sp)", paramDefOffset);
+                            }
+                            else if (paramCall instanceof VirtualReg) {
+                                String paramCallReg = getReg((VirtualReg) paramCall, "$t8");
+                                addMips("sw %s, %d($sp)", paramCallReg, paramDefOffset);
+                            }
+                        }
+                    }
                     if (funcName.equals("main")) {
                         addMips("add $sp, $sp, -%d", allocInfo.getFuncSize(funcName));
                         addMips("jal func_main");
@@ -205,13 +220,13 @@ public class MipsCoder {
                 case SET_ARRAY: {
                     // @t[@x1] = @x2，@t 在这里不会被改变，因此不要使用含有 @t 的 addRegMips
                     // 最终形式为 sw valueReg, offsetReg(baseReg)
-                    String baseReg = loadVreg(p.get().target, "$t8");
+                    String baseReg = getReg(p.get().target, "$t8");
                     String offsetReg;
                     if (p.get().x1 instanceof InstNumber) {
                         offsetReg = String.valueOf(((InstNumber) p.get().x1).number * 4);
                     }
                     else {
-                        String indexReg = loadVreg((VirtualReg) p.get().x1, "$t9");
+                        String indexReg = getReg((VirtualReg) p.get().x1, "$t9");
                         addMips("sll %s, %s, 2", indexReg, indexReg);
                         addMips("add %s, %s, %s", baseReg, baseReg, indexReg);
                         offsetReg = "0";

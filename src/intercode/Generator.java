@@ -181,7 +181,7 @@ public class Generator {
     private void findChildExpressions(Nonterminal p, List<Operand> ans) {
         assert p.isType(_VAR_INIT_VALUE_) || p.isType(_CONST_INIT_VALUE_);
         for (TreeNode child : p.children) {
-            if (child.isType(_EXPRESSION_)) {
+            if (child.isType(_EXPRESSION_) || child.isType(_CONST_EXPRESSION_)) {
                 ans.add(EXPRESSION((Nonterminal) child));
                 return;
             }
