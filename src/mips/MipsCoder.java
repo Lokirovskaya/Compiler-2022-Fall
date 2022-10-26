@@ -63,17 +63,13 @@ public class MipsCoder {
             tReg = (quater.target.realReg >= 0) ? MipsUtil.getRegName(quater.target.realReg) : "$t8";
         }
         if (format.contains("@x1")) {
-            if (isZero(quater.x1))
-                x1RegInst = "$zero";
-            else if (quater.x1 instanceof VirtualReg)
+            if (quater.x1 instanceof VirtualReg)
                 x1RegInst = getReg((VirtualReg) quater.x1, "$t8");
             else
                 x1RegInst = String.valueOf(((InstNumber) quater.x1).number);
         }
         if (format.contains("@x2")) {
-            if (isZero(quater.x2))
-                x2RegInst = "$zero";
-            else if (quater.x2 instanceof VirtualReg)
+            if (quater.x2 instanceof VirtualReg)
                 x2RegInst = getReg((VirtualReg) quater.x2, "$t9");
             else
                 x2RegInst = String.valueOf(((InstNumber) quater.x2).number);
@@ -294,7 +290,7 @@ public class MipsCoder {
                     if (p.get().x2 instanceof InstNumber)
                         addRegMips("slti @t, @rx1, @x2", p.get());
                     else
-                        addRegMips("slt @t, @rx1, @x2", p.get());
+                        addRegMips("slt @t, @rx1, @rx2", p.get());
                     break;
                 case LESS_EQ:
                     addRegMips("sle @t, @rx1, @x2", p.get());
