@@ -7,13 +7,11 @@ import intercode.Operand.VirtualReg;
 import intercode.Quaternion;
 import intercode.Quaternion.OperatorType;
 import util.NodeList;
-import util.Wrap;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Stack;
 
 import static intercode.Quaternion.OperatorType.*;
 
@@ -44,62 +42,76 @@ public class MipsCoder {
         mips.addLast(String.format(format, args));
     }
 
-    // 涉及到虚寄存器的语句，对未分配的虚寄存器进行 lw/sw，对已分配的虚寄存器进行直接翻译
-    // 约定，format 中 @t 表示 target，@x1 表示 x1，@x2 表示 x2，@label 表示 label
-    private void addRegMips(String format, Quaternion quater) {
-        String regTarget = "@t", regX1 = "@x1", regX2 = "@x2", label = "@label";
-        boolean saveTarget = false;
-        if (quater.target != null && format.contains("@t")) {
-            if (quater.target.realReg >= 0)
-                regTarget = MipsUtil.getRegName(quater.target.realReg);
-            else {
-                regTarget = "$t8";
-                saveTarget = true;
-            }
-        }
-        if (quater.x1 instanceof InstNumber)
-            regX1 = quater.x1.toString();
-        else if (quater.x1 instanceof VirtualReg && format.contains("@x1")) {
-            if (((VirtualReg) quater.x1).realReg >= 0)
-                regX1 = MipsUtil.getRegName(((VirtualReg) quater.x1).realReg);
-            else {
-                regX1 = "$t8";
-                if (((VirtualReg) quater.x1).isGlobal)
-                    addMips("lw $t8, %d($gp)", allocInfo.getVregOffset((VirtualReg) quater.x1));
-                else
-                    addMips("lw $t8, %d($sp)", allocInfo.getVregOffset((VirtualReg) quater.x1));
-            }
-        }
-        if (quater.x2 instanceof InstNumber)
-            regX2 = quater.x2.toString();
-        else if (quater.x2 instanceof VirtualReg && format.contains("@x2")) {
-            if (((VirtualReg) quater.x2).realReg >= 0)
-                regX2 = MipsUtil.getRegName(((VirtualReg) quater.x2).realReg);
-            else {
-                regX2 = "$t9";
-                if (((VirtualReg) quater.x2).isGlobal)
-                    addMips("lw $t9, %d($gp)", allocInfo.getVregOffset((VirtualReg) quater.x2));
-                else
-                    addMips("lw $t9, %d($sp)", allocInfo.getVregOffset((VirtualReg) quater.x2));
-            }
-        }
-        if (quater.label != null) label = quater.label.toString();
+    // 将 vreg 加载到 reg 中，返回 reg；如果 vreg.realReg >= 0，返回 realReg
+    private String loadVreg(VirtualReg vreg, String reg) {
+        if (vreg.realReg >= 0) return MipsUtil.getRegName(vreg.realReg);
+        if (vreg.isGlobal)
+            addMips("lw %s, %d($gp)", reg, allocInfo.getVregOffset(vreg));
+        else
+            addMips("lw %s, %d($sp)", reg, allocInfo.getVregOffset(vreg));
+        return reg;
+    }
 
-        addMips(format.replace("@t", regTarget)
-                .replace("@x1", regX1)
-                .replace("@x2", regX2)
-                .replace("@label", label));
-        if (saveTarget) {
-            if (quater.target.isGlobal)
-                addMips("sw %s, %d($gp)", regTarget, allocInfo.getVregOffset(quater.target));
+    // 将 reg 的内容保存到 vreg 对应的栈上空间（若 vreg.realReg >= 0，什么都不做）
+    private void saveVreg(VirtualReg vreg, String reg) {
+        if (vreg.realReg >= 0) return;
+        if (vreg.isGlobal)
+            addMips("sw %s, %d($gp)", reg, allocInfo.getVregOffset(vreg));
+        else
+            addMips("sw %s, %d($sp)", reg, allocInfo.getVregOffset(vreg));
+    }
+
+    // 涉及到虚寄存器的语句，对未分配的虚寄存器进行 lw/sw，对已分配的虚寄存器进行直接翻译
+    // format 中，@t 表示 target，@x1 表示 x1，@x2 表示 x2，@label 表示 label
+    // @rx1 表示必须是寄存器的 x1，若 x1 是立即数，会额外添加 li 指令；@rx2 同理
+    private void addRegMips(String format, Quaternion quater) {
+        String tReg, x1RegInst, x2RegInst, x1Reg, x2Reg, label;
+        tReg = x1RegInst = x2RegInst = x1Reg = x2Reg = label = "";
+        if (format.contains("@t")) {
+            tReg = (quater.target.realReg >= 0) ? MipsUtil.getRegName(quater.target.realReg) : "$t8";
+        }
+        if (format.contains("@x1")) {
+            if (quater.x1 instanceof VirtualReg)
+                x1RegInst = loadVreg((VirtualReg) quater.x1, "$t8");
             else
-                addMips("sw %s, %d($sp)", regTarget, allocInfo.getVregOffset(quater.target));
+                x1RegInst = String.valueOf(((InstNumber) quater.x1).number);
+        }
+        if (format.contains("@x2")) {
+            if (quater.x2 instanceof VirtualReg)
+                x2RegInst = loadVreg((VirtualReg) quater.x2, "$t9");
+            else
+                x2RegInst = String.valueOf(((InstNumber) quater.x2).number);
+        }
+        if (format.contains("@rx1")) {
+            if (quater.x1 instanceof VirtualReg)
+                x1Reg = loadVreg((VirtualReg) quater.x1, "$t8");
+            else {
+                addMips("li $t8, %d", ((InstNumber) quater.x1).number);
+                x1Reg = "$t8";
+            }
+        }
+        if (format.contains("@rx2")) {
+            if (quater.x2 instanceof VirtualReg)
+                x2Reg = loadVreg((VirtualReg) quater.x2, "$t9");
+            else {
+                addMips("li $t9, %d", ((InstNumber) quater.x2).number);
+                x2Reg = "$t9";
+            }
+        }
+        if (format.contains("@label")) {
+            label = quater.label.name;
+        }
+        addMips(format.replace("@t", tReg)
+                .replace("@x1", x1RegInst)
+                .replace("@x2", x2RegInst)
+                .replace("@rx1", x1Reg)
+                .replace("@rx2", x2Reg)
+                .replace("@label", label));
+        if (format.contains("@t")) {
+            saveVreg(quater.target, tReg);
         }
     }
 
-    // 翻译时保证：
-    // 不会全部操作数为立即数
-    // 对于 x1, x2 可交换的命令，不会 x1 为立即数，x2 为寄存器
     private void generate() {
         if (inter.getFirst().op == STR_DECLARE) addMips(".data");
         else addMips(".text");
@@ -136,15 +148,11 @@ public class MipsCoder {
                     Integer offset = allocInfo.getVregOffset(param);
                     if (offset == null) {
                         assert param.realReg >= 0;
-                        addRegMips(String.format("move %s, @x1", MipsUtil.getRegName(param.realReg)), p.get());
+                        addRegMips(String.format("move %s, @rx1", MipsUtil.getRegName(param.realReg)), p.get());
                     }
                     else {
                         int curCallFuncSize = allocInfo.getFuncSize(funcName);
-                        if (p.get().x1 instanceof InstNumber) {
-                            addMips("li $t8, %d", ((InstNumber) p.get().x1).number);
-                            addMips("sw $t8, %d($sp)", offset - curCallFuncSize);
-                        }
-                        else addRegMips(String.format("sw @x1, %d($sp)", offset - curCallFuncSize), p.get());
+                        addRegMips(String.format("sw @rx1, %d($sp)", offset - curCallFuncSize), p.get());
                     }
                     break;
                 }
@@ -172,181 +180,150 @@ public class MipsCoder {
                     break;
                 case SET:
                     if (p.get().x1 instanceof VirtualReg)
-                        addRegMips("move @t, @x1", p.get());
+                        addRegMips("move @t, @rx1", p.get());
                     else
                         addRegMips("li @t, @x1", p.get());
                     break;
                 case ALLOC:
-                    addRegMips(String.format("add @t, $sp, %d", allocInfo.getVregOffset(p.get().target) + 4), p.get());
+                    if (p.get().target.isGlobal)
+                        addRegMips(String.format("add @t, $gp, %d", allocInfo.getVregOffset(p.get().target) + 4), p.get());
+                    else
+                        addRegMips(String.format("add @t, $sp, %d", allocInfo.getVregOffset(p.get().target) + 4), p.get());
                     break;
                 case GET_ARRAY: {
                     // @t = @x1[@x2]
-                    Operand offset = p.get().x2;
-                    if (offset instanceof InstNumber) {
-                        ((InstNumber) offset).number *= 4;
-                        addRegMips("lw @t, @x2(@x1)", p.get());
+                    if (p.get().x2 instanceof InstNumber) {
+                        addRegMips(String.format("lw @t, %d(@rx1)", ((InstNumber) p.get().x2).number * 4), p.get());
                     }
                     else {
-                        addRegMips("sll $t9, @x2, 2", p.get());
-                        addRegMips("add $t9, @x1, $t9", p.get());
+                        addRegMips("sll $t9, @rx2, 2", p.get());
+                        addRegMips("add $t9, $t9, @x1", p.get());
                         addRegMips("lw @t, 0($t9)", p.get());
                     }
                     break;
                 }
                 case SET_ARRAY: {
                     // @t[@x1] = @x2，@t 在这里不会被改变，因此不要使用含有 @t 的 addRegMips
-                    VirtualReg baseVreg = p.get().target;
-                    String baseRealReg;
-                    if (baseVreg.realReg >= 0) baseRealReg = MipsUtil.getRegName(baseVreg.realReg);
-                    else {
-                        baseRealReg = "$t8";
-                        addMips("lw $t8, %d($sp)", allocInfo.getVregOffset(baseVreg));
-                    }
-
-                    Operand offset = p.get().x1;
-                    if (offset instanceof InstNumber) {
-                        int offsetByte = ((InstNumber) offset).number * 4;
-                        if (p.get().x2 instanceof InstNumber) {
-                            addMips("li $t9, %d", ((InstNumber) p.get().x2).number);
-                            addMips("sw $t9, %d(%s)", offsetByte, baseRealReg);
-                        }
-                        else addRegMips(String.format("sw @x2, %d(%s)", offsetByte, baseRealReg), p.get());
+                    // 最终形式为 sw valueReg, offsetReg(baseReg)
+                    String baseReg = loadVreg(p.get().target, "$t8");
+                    String offsetReg;
+                    if (p.get().x1 instanceof InstNumber) {
+                        offsetReg = String.valueOf(((InstNumber) p.get().x1).number * 4);
                     }
                     else {
-                        addRegMips("sll $t9, @x1, 2", p.get());
-                        addMips("add $t8, %s, $t9", baseRealReg);
-                        if (p.get().x2 instanceof InstNumber) {
-                            addMips("li $t9, %d", ((InstNumber) p.get().x2).number);
-                            addMips("sw $t9, 0($t8)");
-                        }
-                        addRegMips("sw @x2, 0($t8)", p.get());
+                        String indexReg = loadVreg((VirtualReg) p.get().x1, "$t9");
+                        addMips("sll %s, %s, 2", indexReg, indexReg);
+                        addMips("add %s, %s, %s", baseReg, baseReg, indexReg);
+                        offsetReg = "0";
                     }
+                    addRegMips(String.format("sw @rx2, %s(%s)", offsetReg, baseReg), p.get());
                     break;
                 }
                 case ADD_ADDR:
                     assert p.get().target.isAddr;
                     assert p.get().x1 instanceof VirtualReg && ((VirtualReg) p.get().x1).isAddr;
                     if (p.get().x2 instanceof InstNumber) {
-                        ((InstNumber) p.get().x2).number *= 4;
-                        addRegMips("add @t, @x1, @x2", p.get());
+                        addRegMips(String.format("add @t, @rx1, %d", ((InstNumber) p.get().x2).number * 4), p.get());
                     }
                     else if (p.get().x2 instanceof VirtualReg) {
-                        addRegMips("sll $t9, @x2, 2", p.get());
-                        addRegMips("add @t, @x1, $t9", p.get());
+                        addRegMips("sll $t9, @rx2, 2", p.get());
+                        addRegMips("add @t, @rx1, $t9", p.get());
                     }
                     break;
                 case ADD:
-                    addRegMips("add @t, @x1, @x2", p.get());
+                    addRegMips("add @t, @rx1, @x2", p.get());
                     break;
                 case SUB:
-                    if (p.get().x1 instanceof InstNumber) {
-                        addMips("li $t8, %d", ((InstNumber) p.get().x1).number);
-                        addRegMips("sub @t, $t8, @x2", p.get());
-                    }
-                    else {
-                        if (p.get().x2 instanceof VirtualReg)
-                            addRegMips("sub @t, @x1, @x2", p.get());
-                        else {
-                            // 不要使用 subi 命令，它是伪指令，并且会被翻译成两条语句
-                            p.get().op = ADD;
-                            p.get().x2 = new InstNumber(-((InstNumber) p.get().x2).number);
-                            addRegMips("add @t, @x1, @x2", p.get());
-                        }
-                    }
+                    if (p.get().x2 instanceof VirtualReg)
+                        addRegMips("sub @t, @rx1, @x2", p.get());
+                    else
+                        addRegMips(String.format("add @t, @rx1, %d", -((InstNumber) p.get().x2).number), p.get());
                     break;
                 case MULT:
-                    addRegMips("mul @t, @x1, @x2", p.get());
+                    addRegMips("mul @t, @rx1, @x2", p.get());
                     break;
                 case DIV:
+                    addRegMips("div @rx1, @rx2", p.get());
+                    addRegMips("mflo @t", p.get());
+                    break;
                 case MOD:
-                    if (p.get().x1 instanceof InstNumber) {
-                        addMips("li $t8, %d", ((InstNumber) p.get().x1).number);
-                        addRegMips("div $t8, @x2", p.get());
-                    }
-                    if (p.get().x2 instanceof InstNumber) {
-                        addMips("li $t9, %d", ((InstNumber) p.get().x2).number);
-                        addRegMips("div @x1, $t9", p.get());
-                    }
-                    else {
-                        addRegMips("div @x1, @x2", p.get());
-                    }
-                    if (p.get().op == DIV) addRegMips("mflo @t", p.get());
-                    else addRegMips("mfhi @t", p.get());
+                    addRegMips("div @rx1, @rx2", p.get());
+                    addRegMips("mfhi @t", p.get());
                     break;
                 case NEG:
                     addRegMips("sub @t, $zero, @x1", p.get());
                     break;
                 case SHIFT_LEFT:
-                    addRegMips("sll @t, @x1, @x2", p.get());
+                    addRegMips("sll @t, @rx1, @x2", p.get());
                     break;
                 case SHIFT_RIGHT:
-                    addRegMips("srl @t, @x1, @x2", p.get());
+                    addRegMips("srl @t, @rx1, @x2", p.get());
                     break;
                 case NOT:
                     addRegMips("xor @t, @t, 1", p.get());
                     break;
                 case EQ:
-                    addRegMips("seq @t, @x1, @x2", p.get());
+                    addRegMips("seq @t, @rx1, @x2", p.get());
                     break;
                 case NOT_EQ:
-                    addRegMips("sne @t, @x1, @x2", p.get());
+                    addRegMips("sne @t, @rx1, @x2", p.get());
                     break;
                 case LESS:
-                    addRegMips("slt @t, @x1, @x2", p.get());
+                    addRegMips("slt @t, @rx1, @x2", p.get());
                     break;
                 case LESS_EQ:
-                    addRegMips("sle @t, @x1, @x2", p.get());
+                    addRegMips("sle @t, @rx1, @x2", p.get());
                     break;
                 case GREATER:
-                    addRegMips("sgt @t, @x1, @x2", p.get());
+                    addRegMips("sgt @t, @rx1, @x2", p.get());
                     break;
                 case GREATER_EQ:
-                    addRegMips("sge @t, @x1, @x2", p.get());
+                    addRegMips("sge @t, @rx1, @x2", p.get());
                     break;
                 case GOTO:
                     addRegMips("j @label", p.get());
                     break;
                 case IF:
-                    addRegMips("bne @x1, $zero, @label", p.get());
+                    addRegMips("bne @rx1, $zero, @label", p.get());
                     break;
                 case IF_NOT:
-                    addRegMips("beq @x1, $zero, @label", p.get());
+                    addRegMips("beq @rx1, $zero, @label", p.get());
                     break;
                 case IF_EQ:
                     if (isZero(p.get().x2))
-                        addRegMips("beq @x1, $zero, @label", p.get());
+                        addRegMips("beq @rx1, $zero, @label", p.get());
                     else
-                        addRegMips("beq @x1, @x2, @label", p.get());
+                        addRegMips("beq @rx1, @x2, @label", p.get());
                     break;
                 case IF_NOT_EQ:
                     if (isZero(p.get().x2))
-                        addRegMips("bne @x1, $zero, @label", p.get());
+                        addRegMips("bne @rx1, $zero, @label", p.get());
                     else
-                        addRegMips("bne @x1, @x2, @label", p.get());
+                        addRegMips("bne @rx1, @x2, @label", p.get());
                     break;
                 case IF_LESS:
                     if (isZero(p.get().x2))
-                        addRegMips("bltz @x1, @label", p.get());
+                        addRegMips("bltz @rx1, @label", p.get());
                     else
-                        addRegMips("blt @x1, @x2, @label", p.get());
+                        addRegMips("blt @rx1, @x2, @label", p.get());
                     break;
                 case IF_LESS_EQ:
                     if (isZero(p.get().x2))
-                        addRegMips("blez @x1, @label", p.get());
+                        addRegMips("blez @rx1, @label", p.get());
                     else
-                        addRegMips("ble @x1, @x2, @label", p.get());
+                        addRegMips("ble @rx1, @x2, @label", p.get());
                     break;
                 case IF_GREATER:
                     if (isZero(p.get().x2))
-                        addRegMips("bgtz @x1, @label", p.get());
+                        addRegMips("bgtz @rx1, @label", p.get());
                     else
-                        addRegMips("bgt @x1, @x2, @label", p.get());
+                        addRegMips("bgt @rx1, @x2, @label", p.get());
                     break;
                 case IF_GREATER_EQ:
                     if (isZero(p.get().x2))
-                        addRegMips("bgez @x1, @label", p.get());
+                        addRegMips("bgez @rx1, @label", p.get());
                     else
-                        addRegMips("bge @x1, @x2, @label", p.get());
+                        addRegMips("bge @rx1, @x2, @label", p.get());
                     break;
                 case GETINT:
                     addMips("li $v0, 5");
@@ -360,7 +337,7 @@ public class MipsCoder {
                     break;
                 case PRINT_CHAR:
                     if (p.get().x1 instanceof VirtualReg)
-                        addRegMips("move $a0, @x1", p.get());
+                        addRegMips("move $a0, @rx1", p.get());
                     else
                         addRegMips("li $a0, @x1", p.get());
                     addMips("li $v0, 11");
@@ -368,7 +345,7 @@ public class MipsCoder {
                     break;
                 case PRINT_INT:
                     if (p.get().x1 instanceof VirtualReg)
-                        addRegMips("move $a0, @x1", p.get());
+                        addRegMips("move $a0, @rx1", p.get());
                     else
                         addRegMips("li $a0, @x1", p.get());
                     addMips("li $v0, 1");
