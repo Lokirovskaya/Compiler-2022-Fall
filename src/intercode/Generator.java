@@ -33,7 +33,6 @@ public class Generator {
 
     public InterCode generate() {
         COMPILE_UNIT(syntaxTreeRoot);
-        Optimizer.MipsPreprocess(inter);
         return inter;
     }
 
@@ -454,7 +453,7 @@ public class Generator {
                 for (TreeNode p : ((Nonterminal) exp.child(2)).children) {
                     if (p.isType(_EXPRESSION_)) {
                         Operand paramAns = EXPRESSION((Nonterminal) p);
-                        newQuater(OperatorType.PUSH, null, paramAns, new InstNumber(idx++), new Label(func.name));
+                        newQuater(OperatorType.PUSH, null, paramAns, null, null);
                     }
                 }
             }

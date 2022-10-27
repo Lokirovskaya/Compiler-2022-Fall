@@ -2,10 +2,8 @@ package mips;
 
 import intercode.Operand.VirtualReg;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 class AllocationInfo {
     Map<VirtualReg, Integer> vregOffsetMap = new HashMap<>(); // 所有 vreg 在自身函数栈空间中的偏移；全局 vreg 则是相对于 $gp 的偏移
@@ -36,7 +34,7 @@ class AllocationInfo {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        for (VirtualReg reg : vregOffsetMap.keySet()) {
+        for (VirtualReg reg : vregOffsetMap.keySet().stream().sorted(Comparator.comparingInt(x -> x.regID)).collect(Collectors.toList())) {
             sb.append(String.format("%s: %d\n", reg.toString(), vregOffsetMap.get(reg)));
         }
         for (String funcName : funcMap.keySet()) {

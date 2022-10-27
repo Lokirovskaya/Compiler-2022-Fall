@@ -8,11 +8,5 @@ public class Optimizer {
         ClearLabel.run(inter);
         RearrangeInst.run(inter);
         MergeCond.run(inter);
-        MipsPreprocess(inter);
-    }
-
-    // 必做的步骤，否则难以生成 mips 代码
-    public static void MipsPreprocess(InterCode inter) {
-        RearrangeInst.run(inter);
     }
 }

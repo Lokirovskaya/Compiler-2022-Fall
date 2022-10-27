@@ -18,7 +18,7 @@ import static intercode.Quaternion.OperatorType.*;
 
 public class MipsCoder {
     private final InterCode inter;
-    private final NodeList<String> mips = new NodeList<>();
+    private final NodeList<Mips> mipsList = new NodeList<>();
     private AllocationInfo allocInfo;
 
     public MipsCoder(InterCode inter) {
@@ -29,23 +29,29 @@ public class MipsCoder {
         this.allocInfo = Allocator.alloc(inter);
         System.out.println(allocInfo);
         generate();
-        MipsUtil.optimize(mips);
+        MipsOptimizer.optimize(mipsList);
     }
 
     public void output(String filename) throws IOException {
         StringBuilder result = new StringBuilder();
-        mips.forEach(p -> result.append(p.get()).append('\n'));
+        mipsList.forEach(p -> result.append(p.get().code).append('\n'));
         Files.write(Paths.get(filename), result.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static final String[] regNames = {"zero", "at", "v0", "v1", "a0", "a1", "a2", "a3", "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "t8", "t9", "k0", "k1", "gp", "sp", "fp", "ra"};
+
+    private static String getRegName(int reg) {
+        return "$" + regNames[reg];
     }
 
     private void addMips(String format, Object... args) {
         assert !format.contains("@");
-        mips.addLast(String.format(format, args));
+        mipsList.addLast(new Mips(String.format(format, args)));
     }
 
     // 获取 vreg 对应的 reg；如果没有预先分配，就将 tempReg 分配给它
     private String getReg(VirtualReg vreg, String tempReg) {
-        if (vreg.realReg >= 0) return MipsUtil.getRegName(vreg.realReg);
+        if (vreg.realReg >= 0) return getRegName(vreg.realReg);
         if (vreg.isGlobal)
             addMips("lw %s, %d($gp)", tempReg, allocInfo.getVregOffset(vreg));
         else
@@ -60,7 +66,7 @@ public class MipsCoder {
         String tReg, x1RegInst, x2RegInst, x1Reg, x2Reg, label;
         tReg = x1RegInst = x2RegInst = x1Reg = x2Reg = label = "";
         if (format.contains("@t")) {
-            tReg = (quater.target.realReg >= 0) ? MipsUtil.getRegName(quater.target.realReg) : "$t8";
+            tReg = (quater.target.realReg >= 0) ? getRegName(quater.target.realReg) : "$t8";
         }
         if (format.contains("@x1")) {
             if (quater.x1 instanceof VirtualReg)
@@ -155,7 +161,7 @@ public class MipsCoder {
 
                         // 建立 实参 -> 形参 的传递
                         if (paramDef.realReg >= 0) {
-                            String paramDefReg = MipsUtil.getRegName(paramDef.realReg);
+                            String paramDefReg = getRegName(paramDef.realReg);
                             if (paramCall instanceof InstNumber) {
                                 addMips("li %s, %d", paramDefReg, ((InstNumber) paramCall).number);
                             }

@@ -47,7 +47,7 @@ class ResultOutput {
             else if (q.op == RETURN) sb.append("return\n");
             else if (q.op == EXIT) sb.append("exit\n");
             else if (q.op == CALL) sb.append(String.format("call %s\n", q.label));
-            else if (q.op == PUSH) sb.append(String.format("push %s %s(%s)\n", q.x1, q.label, q.x2));
+            else if (q.op == PUSH) sb.append(String.format("push %s\n", q.x1));
             else if (q.op == PARAM) sb.append(String.format("param %s\n", q.target));
             else if (q.op == ALLOC) sb.append(String.format("%s = alloc %s\n", q.target, q.x1));
             else if (q.op == STR_DECLARE) sb.append(String.format("str_%s = \"%s\"\n", q.x1, q.label));
