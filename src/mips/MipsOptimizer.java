@@ -16,12 +16,18 @@ class MipsOptimizer {
                 return;
             }
             if (!inText.get()) return;
-            // 优化连续的相同的 lw+sw 操作
+            // 优化 lw+sw 操作
             // lw+sw->lw; sw+lw->sw
-            if(p.get(1) != null) {
+            // sw $t1,a + lw $t2,a -> sw $t1,a + move $t2,$t1
+            if (p.get(1) != null) {
                 if (p.get().op.equals("lw") && p.get(1).op.equals("sw") || p.get().op.equals("sw") && p.get(1).op.equals("lw")) {
                     if (p.get().x1.equals(p.get(1).x1) && p.get().x2.equals(p.get(1).x2) && p.get().x3.equals(p.get(1).x3)) {
                         p.delete(1);
+                    }
+                }
+                if (p.get().op.equals("sw") && p.get(1).op.equals("lw")) {
+                    if (p.get().x2.equals(p.get(1).x2) && p.get().x3.equals(p.get(1).x3)) {
+                        p.set(new Mips(String.format("move %s, %s", p.get(1).x1, p.get(0).x1)), 1);
                     }
                 }
             }

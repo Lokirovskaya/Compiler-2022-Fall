@@ -54,6 +54,12 @@ public class Generator {
         inter.addLast(new Quaternion(op, target, x1, x2, label));
     }
 
+    private void newQuaterWithList(Quaternion.OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label, List<Operand> list) {
+        Quaternion quater = new Quaternion(op, target, x1, x2, label);
+        quater.list = list;
+        inter.addLast(quater);
+    }
+
     private Symbol.Var getVar(Token varIdent) {
         assert varIdent.isType(IDENTIFIER);
         return (Symbol.Var) identSymbolMap.get(varIdent);
@@ -448,16 +454,16 @@ public class Generator {
         else if (exp.child(0).isType(IDENTIFIER)) {
             Token ident = (Token) exp.child(0);
             Symbol.Function func = getFunc(ident);
+            List<Operand> paramList = new ArrayList<>();
             if (exp.child(2).isType(_FUNCTION_CALL_PARAM_LIST_)) {
-                int idx = 0;
                 for (TreeNode p : ((Nonterminal) exp.child(2)).children) {
                     if (p.isType(_EXPRESSION_)) {
                         Operand paramAns = EXPRESSION((Nonterminal) p);
-                        newQuater(OperatorType.PUSH, null, paramAns, null, null);
+                        paramList.add(paramAns);
                     }
                 }
             }
-            newQuater(OperatorType.CALL, null, null, null, new Label(func.name));
+            newQuaterWithList(OperatorType.CALL, null, null, null, new Label(func.name), paramList);
             if (!func.isVoid) {
                 VirtualReg ans = newReg();
                 newQuater(OperatorType.SET, ans, returnReg, null, null);

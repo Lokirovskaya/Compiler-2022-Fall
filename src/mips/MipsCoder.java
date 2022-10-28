@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Stack;
 
 import static intercode.Quaternion.OperatorType.*;
 
@@ -123,7 +122,6 @@ public class MipsCoder {
         if (inter.getFirst().op == STR_DECLARE) addMips(".data");
         else addMips(".text");
 
-        Stack<Operand> paramStack = new Stack<>();
         inter.forEach(p -> {
             OperatorType op = p.get().op;
 //            addMips("# %s", op.name());
@@ -142,9 +140,6 @@ public class MipsCoder {
                 case PARAM:
                     // 什么都不用做，因为参数已经由调用者放到了记录好的位置
                     break;
-                case PUSH:
-                    paramStack.push(p.get().x1);
-                    break;
                 // 对于函数的调用者：
                 // 1. 依照当前 $sp 和目标函数参数的 offset，减去一整个目标函数的调用栈大小，存放目标函数需要的参数
                 // 2. 存放当前上下文的 $ra 到 0($sp) 位置
@@ -156,8 +151,8 @@ public class MipsCoder {
                     String funcName = p.get().label.name;
                     int paramCount = allocInfo.getFuncParamCount(funcName);
                     for (int i = 0; i < paramCount; i++) {
-                        VirtualReg paramDef = allocInfo.getFuncParam(funcName, paramCount - i - 1); // 形参（保留在栈上还是寄存器中）
-                        Operand paramCall = paramStack.pop(); // 实参（是 vreg 还是立即数）
+                        VirtualReg paramDef = allocInfo.getFuncParam(funcName, i); // 形参（保留在栈上还是寄存器中）
+                        Operand paramCall = p.get().list.get(i); // 实参（是 vreg 还是立即数）
 
                         // 建立 实参 -> 形参 的传递
                         if (paramDef.realReg >= 0) {

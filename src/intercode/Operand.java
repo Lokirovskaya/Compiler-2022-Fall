@@ -19,11 +19,10 @@ public abstract class Operand {
             sb.append('@');
             if (isGlobal) sb.append('@');
             if (isAddr) sb.append('&');
+            sb.append(regID);
             if (name != null) {
-                sb.append(name);
-                if (tableID > 0) sb.append('`').append(tableID);
+                sb.append('_').append(name);
             }
-            else sb.append(regID);
             if (realReg >= 0) sb.append('$').append(realReg);
             return sb.toString();
         }

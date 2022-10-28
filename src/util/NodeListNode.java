@@ -24,6 +24,12 @@ public class NodeListNode<E> {
         return node == null ? null : node.getSelf();
     }
 
+    public void set(E e, int offset) {
+        if (offset == 0) this.set(e);
+        NodeListNode<E> node = this.next.nodeOffset(offset);
+        if (node != null) node.data = e;
+    }
+
     public void insertNext(E e) {
         this.next.insertNextSelf(e);
     }
