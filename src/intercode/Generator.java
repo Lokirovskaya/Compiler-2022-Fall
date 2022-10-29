@@ -2,7 +2,6 @@ package intercode;
 
 import intercode.Quaternion.OperatorType;
 import lexer.Token;
-import optimizer.Optimizer;
 import parser.Nonterminal;
 import parser.TreeNode;
 import symbol.Symbol;
@@ -23,6 +22,7 @@ public class Generator {
     private int regIdx = 1;
     private int labelIdx = 1;
     private int stringLabelIdx = 1;
+    private int globalArrayTagIdx = 1;
     private static final VirtualReg returnReg = new VirtualReg(0);
     private final Stack<Pair<Label, Label>> whileLabelsList = new Stack<>();
 
@@ -54,12 +54,6 @@ public class Generator {
         inter.addLast(new Quaternion(op, target, x1, x2, label));
     }
 
-    private void newQuaterWithList(Quaternion.OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label, List<Operand> list) {
-        Quaternion quater = new Quaternion(op, target, x1, x2, label);
-        quater.list = list;
-        inter.addLast(quater);
-    }
-
     private Symbol.Var getVar(Token varIdent) {
         assert varIdent.isType(IDENTIFIER);
         return (Symbol.Var) identSymbolMap.get(varIdent);
@@ -76,6 +70,7 @@ public class Generator {
     private VirtualReg getVarReg(Token varIdent) {
         assert varIdent.isType(IDENTIFIER);
         Symbol.Var var = getVar(varIdent);
+        assert !(var.isGlobal() && var.isArray());
         if (var.reg == null) {
             var.reg = newReg();
             var.reg.name = var.name;
@@ -84,6 +79,17 @@ public class Generator {
             var.reg.isGlobal = (var.selfTable.id == 0);
         }
         return var.reg;
+    }
+
+    // 获取全局数组的 Tag，若没有，则分配一个
+    private Label getVarTag(Token varIdent) {
+        assert varIdent.isType(IDENTIFIER);
+        Symbol.Var var = getVar(varIdent);
+        assert var.isGlobal() && var.isArray();
+        if (var.globalArrayTag == null) {
+            var.globalArrayTag = new Label("array_" + globalArrayTagIdx++);
+        }
+        return var.globalArrayTag;
     }
 
     // 获取多维数组调用的偏移量，若访问 a[x][y]，请传入 offset = {x,y}
@@ -141,46 +147,57 @@ public class Generator {
         assert def.isType(_VAR_DEFINE_) || def.isType(_CONST_DEFINE_);
         Token ident = (Token) def.child(0);
         Symbol.Var var = getVar(ident);
+        Quaternion alloc = null; // 数组声明若有初值，初值保存在 alloc 的 list 中
         if (var.isArray()) {
             // Ident '[' ConstExp ']' '[' ConstExp ']'
-            VirtualReg arrayReg = getVarReg(ident);
+            InstNumber fullSize;
             if (var.dimension == 1) {
                 var.sizeOfDim1 = (InstNumber) EXPRESSION((Nonterminal) def.child(2));
-                newQuater(OperatorType.ALLOC, arrayReg, var.sizeOfDim1, null, null);
+                fullSize = new InstNumber(var.sizeOfDim1.number);
             }
-            else if (var.dimension == 2) {
+            else {
                 var.sizeOfDim1 = (InstNumber) EXPRESSION((Nonterminal) def.child(5));
                 var.sizeOfDim2 = (InstNumber) EXPRESSION((Nonterminal) def.child(2));
-                int fullSize = var.sizeOfDim1.number * var.sizeOfDim2.number;
-                newQuater(OperatorType.ALLOC, arrayReg, new InstNumber(fullSize), null, null);
+                fullSize = new InstNumber(var.sizeOfDim1.number * var.sizeOfDim2.number);
+            }
+            if (var.isGlobal()) {
+                Label arrayTag = getVarTag(ident);
+                alloc = new Quaternion(OperatorType.GLOBAL_ALLOC, null, fullSize, null, arrayTag);
+            }
+            else {
+                VirtualReg arrayReg = getVarReg(ident);
+                alloc = new Quaternion(OperatorType.ALLOC, arrayReg, fullSize, null, null);
             }
         }
-        // if def has an init value
+
+        // 如果有初值
         TreeNode initVal = def.child(def.children.size() - 1);
         if (initVal.isType(_VAR_INIT_VALUE_) || initVal.isType(_CONST_INIT_VALUE_)) {
-            getVarReg(ident); // alloc vreg，如果是常量，事实上这个 vreg 会被丢弃
-            VAR_INIT_VALUE((Nonterminal) initVal, var);
+            if (!var.isArray()) {
+                getVarReg(ident); // 为变量分配 vreg，如果是常量，这个 vreg 实际上会被丢弃
+                Operand expAns = EXPRESSION((Nonterminal) ((Nonterminal) initVal).child(0));
+                if (var.isConst) var.constVal = (InstNumber) expAns;
+                else newQuater(OperatorType.SET, var.reg, expAns, null, null);
+            }
+            else {
+                // 存放数组 vreg/tag 在 alloc 时分配过了；数组占用的栈空间，在 mips.Allocator 分配
+                List<Operand> initExpList = new ArrayList<>();
+                findChildExpressions(((Nonterminal) initVal), initExpList);
+                assert alloc != null;
+                alloc.list = initExpList;
+                if (var.isConst) {
+                    var.constArrayVal = initExpList.stream().map(e -> (InstNumber) e).collect(Collectors.toList());
+                }
+            }
         }
-    }
-
-    // target 是继承属性，被赋值的寄存器
-    private void VAR_INIT_VALUE(Nonterminal init, Symbol.Var var) {
-        assert init.isType(_VAR_INIT_VALUE_) || init.isType(_CONST_INIT_VALUE_);
-        if (!var.isArray()) {
-            Operand expAns = EXPRESSION((Nonterminal) init.child(0));
-            if (var.isConst) var.constVal = (InstNumber) expAns;
-            else newQuater(OperatorType.SET, var.reg, expAns, null, null);
-        }
+        // 没有初值的全局变量，应该要赋值为 0
         else {
-            List<Operand> initExpList = new ArrayList<>();
-            findChildExpressions(init, initExpList);
-            for (int i = 0; i < initExpList.size(); i++) {
-                newQuater(OperatorType.SET_ARRAY, var.reg, new InstNumber(i), initExpList.get(i), null);
-            }
-            if (var.isConst) {
-                var.constArrayVal = initExpList.stream().map(e -> (InstNumber) e).collect(Collectors.toList());
+            if (var.isGlobal() && !var.isArray()) {
+                newQuater(OperatorType.SET, getVarReg(ident), new InstNumber(0), null, null);
             }
         }
+
+        if (alloc != null) inter.addLast(alloc);
     }
 
     // InitVal → Exp | '{' [ InitVal { ',' InitVal } ] '}'
@@ -286,7 +303,10 @@ public class Generator {
                         .map(e -> EXPRESSION((Nonterminal) e))
                         .collect(Collectors.toList());
                 Operand linearOffset = getLinearOffset(var, offset);
-                newQuater(OperatorType.SET_ARRAY, getVarReg(ident), linearOffset, expAns, null);
+                if (var.isGlobal())
+                    newQuater(OperatorType.SET_GLOBAL_ARRAY, null, linearOffset, expAns, getVarTag(ident));
+                else
+                    newQuater(OperatorType.SET_ARRAY, getVarReg(ident), linearOffset, expAns, null);
             }
             else {
                 newQuater(OperatorType.SET, getVarReg(ident), expAns, null, null);
@@ -367,8 +387,9 @@ public class Generator {
                         newQuater(OperatorType.PRINT_CHAR, null, new InstNumber('\n'), null, null);
                     else {
                         int curStringIdx = stringLabelIdx++;
-                        inter.addFirst(new Quaternion(OperatorType.STR_DECLARE, null, new InstNumber(curStringIdx), null, new Label(str)));
-                        newQuater(OperatorType.PRINT_STR, null, new InstNumber(curStringIdx), null, null);
+                        newQuater(OperatorType.STR_DECLARE, null, new InstNumber(curStringIdx), null, new Label(str));
+                        newQuater(OperatorType.PRINT_STR, null, null, null, new Label("str_" + curStringIdx));
+//                        newQuater(OperatorType.PRINT_STR, null, null, null, new Label(str));
                     }
                     buffer.delete(0, buffer.length());
                 }
@@ -463,7 +484,9 @@ public class Generator {
                     }
                 }
             }
-            newQuaterWithList(OperatorType.CALL, null, null, null, new Label(func.name), paramList);
+            Quaternion call = new Quaternion(OperatorType.CALL, null, null, null, new Label(func.name));
+            call.list = paramList;
+            inter.addLast(call);
             if (!func.isVoid) {
                 VirtualReg ans = newReg();
                 newQuater(OperatorType.SET, ans, returnReg, null, null);
@@ -538,11 +561,17 @@ public class Generator {
             VirtualReg arrAns = newReg();
             // 完全取地址
             if (var.dimension == offset.size()) {
-                newQuater(OperatorType.GET_ARRAY, arrAns, getVarReg(ident), linearOffset, null);
+                if (var.isGlobal())
+                    newQuater(OperatorType.GET_GLOBAL_ARRAY, arrAns, null, linearOffset, getVarTag(ident));
+                else
+                    newQuater(OperatorType.GET_ARRAY, arrAns, getVarReg(ident), linearOffset, null);
             }
             // 不完全取地址，返回仍是一个地址
             else {
-                newQuater(OperatorType.ADD_ADDR, arrAns, getVarReg(ident), linearOffset, null);
+                if (var.isGlobal())
+                    newQuater(OperatorType.ADD_GLOBAL_ADDR, arrAns, null, linearOffset, getVarTag(ident));
+                else
+                    newQuater(OperatorType.ADD_ADDR, arrAns, getVarReg(ident), linearOffset, null);
                 arrAns.isAddr = true;
             }
             return arrAns;

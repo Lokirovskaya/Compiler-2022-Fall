@@ -22,7 +22,10 @@ class ResultOutput {
             else if (q.op == NEG) sb.append(String.format("%s = -%s\n", q.target, q.x1));
             else if (q.op == GET_ARRAY) sb.append(String.format("%s = %s[%s]\n", q.target, q.x1, q.x2));
             else if (q.op == SET_ARRAY) sb.append(String.format("%s[%s] = %s\n", q.target, q.x1, q.x2));
+            else if (q.op == GET_GLOBAL_ARRAY) sb.append(String.format("%s = %s[%s]\n", q.target, q.label, q.x2));
+            else if (q.op == SET_GLOBAL_ARRAY) sb.append(String.format("%s[%s] = %s\n", q.label, q.x1, q.x2));
             else if (q.op == ADD_ADDR) sb.append(String.format("%s = &%s[%s]\n", q.target, q.x1, q.x2));
+            else if (q.op == ADD_GLOBAL_ADDR) sb.append(String.format("%s = &%s[%s]\n", q.target, q.label, q.x2));
             else if (q.op == IF) sb.append(String.format("if %s goto %s\n", q.x1, q.label));
             else if (q.op == IF_NOT) sb.append(String.format("if_not %s goto %s\n", q.x1, q.label));
             else if (q.op == IF_EQ) sb.append(String.format("if_cond %s == %s goto %s\n", q.x1, q.x2, q.label));
@@ -40,7 +43,7 @@ class ResultOutput {
             else if (q.op == GREATER_EQ) sb.append(String.format("%s = %s >= %s\n", q.target, q.x1, q.x2));
             else if (q.op == GETINT) sb.append(String.format("%s = getint\n", q.target));
             else if (q.op == PRINT_INT) sb.append(String.format("printi %s\n", q.x1));
-            else if (q.op == PRINT_STR) sb.append(String.format("prints str_%s\n", q.x1));
+            else if (q.op == PRINT_STR) sb.append(String.format("prints %s\n", q.label));
             else if (q.op == PRINT_CHAR) sb.append(String.format("printc %s\n", q.x1));
             else if (q.op == FUNC) sb.append(String.format("\nfunc %s\n", q.label));
             else if (q.op == LABEL) sb.append(String.format("%s:\n", q.label));
@@ -49,7 +52,8 @@ class ResultOutput {
             else if (q.op == EXIT) sb.append("exit\n");
             else if (q.op == CALL) sb.append(String.format("call %s %s\n", q.label, operandListToString(q.list)));
             else if (q.op == PARAM) sb.append(String.format("param %s\n", q.target));
-            else if (q.op == ALLOC) sb.append(String.format("%s = alloc %s\n", q.target, q.x1));
+            else if (q.op == ALLOC) sb.append(String.format("%s = alloc %s %s\n", q.target, q.x1, operandListToString(q.list)));
+            else if (q.op == GLOBAL_ALLOC) sb.append(String.format("%s = global_alloc %s %s\n", q.label, q.x1, operandListToString(q.list)));
             else if (q.op == STR_DECLARE) sb.append(String.format("str_%s = \"%s\"\n", q.x1, q.label));
         });
         Files.write(Paths.get(filename), sb.toString().trim().getBytes(StandardCharsets.UTF_8));

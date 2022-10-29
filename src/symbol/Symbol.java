@@ -1,5 +1,6 @@
 package symbol;
 
+import intercode.Label;
 import intercode.Operand;
 
 import java.util.ArrayList;
@@ -10,6 +11,10 @@ public abstract class Symbol {
     public int lineNumber;
     public Table selfTable;
 
+    public boolean isGlobal() {
+        return selfTable.id == 0;
+    }
+
     public static class Var extends Symbol {
         public boolean isConst;
         public int dimension; // 普通变量为 0
@@ -17,6 +22,7 @@ public abstract class Symbol {
         public Operand.InstNumber sizeOfDim1, sizeOfDim2;
         public Operand.InstNumber constVal;
         public List<Operand.InstNumber> constArrayVal;
+        public Label globalArrayTag;
 
         public boolean isArray() {
             return dimension > 0;

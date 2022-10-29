@@ -13,8 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-import static intercode.Quaternion.OperatorType.*;
-
 public class MipsCoder {
     private final InterCode inter;
     private final NodeList<Mips> mipsList = new NodeList<>();
@@ -119,17 +117,38 @@ public class MipsCoder {
     }
 
     private void generate() {
-        if (inter.getFirst().op == STR_DECLARE) addMips(".data");
-        else addMips(".text");
-
+        addMips(".data");
         inter.forEach(p -> {
-            OperatorType op = p.get().op;
-//            addMips("# %s", op.name());
-            switch (op) {
+            switch (p.get().op) {
                 case STR_DECLARE:
                     addMips("str_%d: .asciiz \"%s\"", ((InstNumber) p.get().x1).number, p.get().label);
-                    if (p.get(1).op != STR_DECLARE) addMips(".text");
                     break;
+                case GLOBAL_ALLOC: {
+                    int size = ((InstNumber) p.get().x1).number;
+                    if (p.get().list == null || p.get().list.size() == 0) {
+                        addMips("%s: .space %d", p.get().label, size * 4);
+                    }
+                    else {
+                        assert p.get().list.size() == size;
+                        StringBuilder sb = new StringBuilder();
+                        sb.append(p.get().label).append(": .word ");
+                        for (Operand o : p.get().list) {
+                            int wordVal = 0; // 不能确定的值，word 段填写 0
+                            if (o instanceof InstNumber) wordVal = ((InstNumber) o).number;
+                            sb.append(wordVal).append(", ");
+                        }
+                        addMips(sb.substring(0, sb.length() - 2));
+                    }
+                    break;
+                }
+            }
+        });
+
+        addMips(".text");
+        inter.forEach(p -> {
+            OperatorType op = p.get().op;
+//            addMips("# %s (t=%s, x1=%s, x2=%s, label=%s)", op.name(), p.get().target, p.get().x1, p.get().x2, p.get().label);
+            switch (op) {
                 case FUNC:
                     addMips("jr $ra");
                     addMips("func_%s:", p.get().label.name);
@@ -151,6 +170,7 @@ public class MipsCoder {
                     String funcName = p.get().label.name;
                     int paramCount = allocInfo.getFuncParamCount(funcName);
                     for (int i = 0; i < paramCount; i++) {
+                        assert p.get().list != null;
                         VirtualReg paramDef = allocInfo.getFuncParam(funcName, i); // 形参（保留在栈上还是寄存器中）
                         Operand paramCall = p.get().list.get(i); // 实参（是 vreg 还是立即数）
 
@@ -203,12 +223,33 @@ public class MipsCoder {
                     else
                         addRegMips("li @t, @x1", p.get());
                     break;
-                case ALLOC:
-                    if (p.get().target.isGlobal)
-                        addRegMips(String.format("add @t, $gp, %d", allocInfo.getVregOffset(p.get().target) + 4), p.get());
-                    else
-                        addRegMips(String.format("add @t, $sp, %d", allocInfo.getVregOffset(p.get().target) + 4), p.get());
+                case ALLOC: {
+                    int arrayOffset = allocInfo.getVregOffset(p.get().target) + 4;
+                    addRegMips(String.format("add @t, $sp, %d", arrayOffset), p.get());
+                    for (int i = 0; p.get().list != null && i < p.get().list.size(); i++) {
+                        Operand o = p.get().list.get(i);
+                        if (o instanceof InstNumber) {
+                            addMips("li $t8, %d", ((InstNumber) o).number);
+                            addMips("sw $t8, %d($sp)", arrayOffset + i * 4);
+                        }
+                        else {
+                            String initValReg = getReg((VirtualReg) o, "$t8");
+                            addMips("sw %s, %d($sp)", initValReg, arrayOffset + i * 4);
+                        }
+                    }
                     break;
+                }
+                case GLOBAL_ALLOC: {
+                    // 设置初值未确定的变量的值
+                    for (int i = 0; p.get().list != null && i < p.get().list.size(); i++) {
+                        Operand o = p.get().list.get(i);
+                        if (o instanceof VirtualReg) {
+                            String initValReg = getReg((VirtualReg) o, "$t8");
+                            addMips("sw %s, %s+%d", initValReg, p.get().label, i * 4);
+                        }
+                    }
+                    break;
+                }
                 case GET_ARRAY: {
                     // @t = @x1[@x2]
                     if (p.get().x2 instanceof InstNumber) {
@@ -221,6 +262,16 @@ public class MipsCoder {
                     }
                     break;
                 }
+                case GET_GLOBAL_ARRAY:
+                    // @t = @label[@x2]
+                    if (p.get().x2 instanceof InstNumber) {
+                        addRegMips(String.format("lw @t, @label+%d", ((InstNumber) p.get().x2).number * 4), p.get());
+                    }
+                    else {
+                        addRegMips("sll $t9, @rx2, 2", p.get());
+                        addRegMips("lw @t, @label($t9)", p.get());
+                    }
+                    break;
                 case SET_ARRAY: {
                     // @t[@x1] = @x2，@t 在这里不会被改变，因此不要使用含有 @t 的 addRegMips
                     // 最终形式为 sw valueReg, offsetReg(baseReg)
@@ -238,7 +289,19 @@ public class MipsCoder {
                     addRegMips(String.format("sw @rx2, %s(%s)", offsetReg, baseReg), p.get());
                     break;
                 }
+                case SET_GLOBAL_ARRAY:
+                    // @label[@x1] = @x2
+                    if (p.get().x1 instanceof InstNumber) {
+                        addRegMips(String.format("sw @rx2, @label+%d", ((InstNumber) p.get().x1).number * 4), p.get());
+                    }
+                    else {
+                        String indexReg = getReg((VirtualReg) p.get().x1, "$t8");
+                        addMips("sll %s, %s, 2", indexReg, indexReg);
+                        addRegMips(String.format("sw @rx2, @label(%s)", indexReg), p.get());
+                    }
+                    break;
                 case ADD_ADDR:
+                    // @&t = @&x1 + @x2
                     assert p.get().target.isAddr;
                     assert p.get().x1 instanceof VirtualReg && ((VirtualReg) p.get().x1).isAddr;
                     if (p.get().x2 instanceof InstNumber) {
@@ -247,6 +310,17 @@ public class MipsCoder {
                     else if (p.get().x2 instanceof VirtualReg) {
                         addRegMips("sll $t9, @rx2, 2", p.get());
                         addRegMips("add @t, @rx1, $t9", p.get());
+                    }
+                    break;
+                case ADD_GLOBAL_ADDR:
+                    // @&t = @label + @x2
+                    addMips("la $t8, %s", p.get().label);
+                    if (p.get().x2 instanceof InstNumber) {
+                        addRegMips(String.format("add @t, $t8, %d", ((InstNumber) p.get().x2).number * 4), p.get());
+                    }
+                    else {
+                        addRegMips("sll $t9, @rx2, 2", p.get());
+                        addRegMips("add @t, $t8, $t9", p.get());
                     }
                     break;
                 case ADD:
@@ -353,7 +427,7 @@ public class MipsCoder {
                     addRegMips("move @t, $v0", p.get());
                     break;
                 case PRINT_STR:
-                    addMips("la $a0, str_%d", ((InstNumber) p.get().x1).number);
+                    addMips("la $a0, %s", p.get().label);
                     addMips("li $v0, 4");
                     addMips("syscall");
                     break;
