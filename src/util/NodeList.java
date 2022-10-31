@@ -12,7 +12,9 @@ public class NodeList<E> {
         tail.prev = head;
     }
 
-    public E getFirst() {return head.next.getSelf();}
+    public E getFirst() {
+        return head.next.getSelf();
+    }
 
     public void addFirst(E e) {
         head.insertNextSelf(e);

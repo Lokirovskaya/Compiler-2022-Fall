@@ -9,7 +9,7 @@ import java.util.Set;
 import static intercode.Quaternion.OperatorType.*;
 
 class ClearLabel {
-    public static void run(InterCode inter) {
+    static InterCode run(InterCode inter) {
         Set<Label> labelRef = new HashSet<>();
         inter.forEach(p -> {
             if (p.get().op == IF || p.get().op == IF_NOT || p.get().op == GOTO) {
@@ -19,5 +19,6 @@ class ClearLabel {
         inter.forEach(p -> {
             if (p.get().op == LABEL && !labelRef.contains(p.get().label)) p.delete();
         });
+        return inter;
     }
 }

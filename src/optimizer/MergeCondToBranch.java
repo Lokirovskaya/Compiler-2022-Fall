@@ -5,9 +5,8 @@ import intercode.InterCode;
 import static intercode.Quaternion.OperatorType.*;
 
 // 将判断语句合并到分支语句中去
-// todo: IF_COND 语句不会在 merge inst 和 swap operand 中调整
-class MergeCond {
-    static void run(InterCode inter) {
+class MergeCondToBranch {
+    static InterCode run(InterCode inter) {
         inter.forEach(p -> {
             switch (p.get().op) {
                 case NOT:
@@ -67,5 +66,6 @@ class MergeCond {
                     break;
             }
         });
+        return inter;
     }
 }

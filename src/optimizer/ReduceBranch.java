@@ -4,8 +4,8 @@ import intercode.InterCode;
 
 import static intercode.Quaternion.OperatorType.*;
 
-class ReduceGoto {
-    static void run(InterCode inter) {
+class ReduceBranch {
+    static InterCode run(InterCode inter) {
         inter.forEach(p -> {
             while (true) {
                 // [if cond] goto A; {label X}; label A; -> {label X}; label A;
@@ -45,5 +45,6 @@ class ReduceGoto {
                 break;
             }
         });
+        return inter;
     }
 }

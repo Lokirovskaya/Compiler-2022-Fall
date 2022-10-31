@@ -385,12 +385,8 @@ public class Generator {
                         newQuater(OperatorType.PRINT_CHAR, null, new InstNumber(str.charAt(0)), null, null);
                     else if (str.equals("\\n"))
                         newQuater(OperatorType.PRINT_CHAR, null, new InstNumber('\n'), null, null);
-                    else {
-                        int curStringIdx = stringLabelIdx++;
-                        newQuater(OperatorType.STR_DECLARE, null, new InstNumber(curStringIdx), null, new Label(str));
-                        newQuater(OperatorType.PRINT_STR, null, null, null, new Label("str_" + curStringIdx));
-//                        newQuater(OperatorType.PRINT_STR, null, null, null, new Label(str));
-                    }
+                    else
+                        newQuater(OperatorType.PRINT_STR, null, null, null, new Label(str));
                     buffer.delete(0, buffer.length());
                 }
             };
