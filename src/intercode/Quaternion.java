@@ -21,7 +21,7 @@ public class Quaternion {
 
     public enum OperatorType {
         ADD, SUB, MULT, DIV, MOD, NEG, NOT, EQ, NOT_EQ, LESS, LESS_EQ, GREATER, GREATER_EQ,
-        IF, GOTO, FUNC, CALL, RETURN, EXIT,
+        IF, GOTO, FUNC, CALL, RETURN, EXIT, SET_RETURN, GET_RETURN,
         SET, GET_ARRAY, SET_ARRAY, ADD_ADDR, GET_GLOBAL_ARRAY, SET_GLOBAL_ARRAY, ADD_GLOBAL_ADDR,
         LABEL, PARAM, ALLOC, GLOBAL_ALLOC,
         GETINT, PRINT_STR, PRINT_INT, PRINT_CHAR,
@@ -67,6 +67,8 @@ public class Quaternion {
         else if (op == LABEL) return String.format("%s:", label);
         else if (op == GOTO) return String.format("goto %s", label);
         else if (op == RETURN) return "return";
+        else if (op == SET_RETURN) return String.format("RET = %s", x1);
+        else if (op == GET_RETURN) return String.format("%s = RET", target);
         else if (op == EXIT) return "exit";
         else if (op == CALL) return String.format("call %s %s", label, operandListToString(list));
         else if (op == PARAM) return String.format("param %s", target);

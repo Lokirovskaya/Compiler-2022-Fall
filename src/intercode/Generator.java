@@ -21,7 +21,6 @@ public class Generator {
     private final Map<Token, Symbol> identSymbolMap;
     private int regIdx = 1;
     private int labelIdx = 1;
-    private static final VirtualReg returnReg = new VirtualReg(0);
     private final Stack<Pair<Label, Label>> whileLabelsList = new Stack<>();
 
     public Generator(TreeNode syntaxTreeRoot, Map<Token, Symbol> identSymbolMap) {
@@ -32,12 +31,6 @@ public class Generator {
     public InterCode generate() {
         COMPILE_UNIT(syntaxTreeRoot);
         return inter;
-    }
-
-    static {
-        returnReg.name = "RET";
-        returnReg.realReg = 2;
-        returnReg.isGlobal = true;
     }
 
     private VirtualReg newReg() {
@@ -319,7 +312,7 @@ public class Generator {
         else if (stmt.child(0).isType(RETURN)) {
             if (stmt.child(1).isType(_EXPRESSION_)) {
                 Operand expAns = EXPRESSION((Nonterminal) stmt.child(1));
-                newQuater(OperatorType.SET, returnReg, expAns, null, null);
+                newQuater(OperatorType.SET_RETURN, null, expAns, null, null);
             }
             newQuater(OperatorType.RETURN, null, null, null, null);
         }
@@ -480,7 +473,7 @@ public class Generator {
             inter.addLast(call);
             if (!func.isVoid) {
                 VirtualReg ans = newReg();
-                newQuater(OperatorType.SET, ans, returnReg, null, null);
+                newQuater(OperatorType.GET_RETURN, ans, null, null, null);
                 return ans;
             }
             else return null;
