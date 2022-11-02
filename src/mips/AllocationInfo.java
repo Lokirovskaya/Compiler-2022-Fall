@@ -31,19 +31,16 @@ class AllocationInfo {
         return funcMap.get(funcName).paramList.size();
     }
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
+    void printAllocInfo() {
         for (VirtualReg reg : vregOffsetMap.keySet().stream().sorted(Comparator.comparingInt(x -> x.regID)).collect(Collectors.toList())) {
-            sb.append(String.format("%s: %d\n", reg.toString(), vregOffsetMap.get(reg)));
+            System.out.printf("%s: %d\n", reg.toString(), vregOffsetMap.get(reg));
         }
         for (String funcName : funcMap.keySet()) {
             FunctionInfo funcInfo = funcMap.get(funcName);
-            sb.append(String.format("func %s, size %d\n", funcName, funcInfo.size));
+            System.out.printf("func %s, size %d\n", funcName, funcInfo.size);
             for (VirtualReg param : funcInfo.paramList) {
-                sb.append(String.format("  param %s: %s\n", param.name, vregOffsetMap.get(param).toString()));
+                System.out.printf("  param %s: %s\n", param.name, vregOffsetMap.get(param).toString());
             }
         }
-        return sb.toString();
     }
 }

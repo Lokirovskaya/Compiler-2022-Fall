@@ -49,7 +49,7 @@ public class Compiler {
 
         Generator generator = new Generator(root, identSymbolMap);
         InterCode inter = generator.generate();
-        inter = Optimizer.optimize(inter);
+        Optimizer.optimize(inter);
         inter.output("inter.txt");
 
         MipsCoder mipsCoder = new MipsCoder(inter);

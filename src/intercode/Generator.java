@@ -21,8 +21,6 @@ public class Generator {
     private final Map<Token, Symbol> identSymbolMap;
     private int regIdx = 1;
     private int labelIdx = 1;
-    private int stringLabelIdx = 1;
-    private int globalArrayTagIdx = 1;
     private static final VirtualReg returnReg = new VirtualReg(0);
     private final Stack<Pair<Label, Label>> whileLabelsList = new Stack<>();
 
@@ -86,10 +84,7 @@ public class Generator {
         assert varIdent.isType(IDENTIFIER);
         Symbol.Var var = getVar(varIdent);
         assert var.isGlobal() && var.isArray();
-        if (var.globalArrayTag == null) {
-            var.globalArrayTag = new Label("array_" + globalArrayTagIdx++);
-        }
-        return var.globalArrayTag;
+        return new Label("arr_" + var.name);
     }
 
     // 获取多维数组调用的偏移量，若访问 a[x][y]，请传入 offset = {x,y}

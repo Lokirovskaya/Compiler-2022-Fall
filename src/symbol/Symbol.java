@@ -22,7 +22,6 @@ public abstract class Symbol {
         public Operand.InstNumber sizeOfDim1, sizeOfDim2;
         public Operand.InstNumber constVal;
         public List<Operand.InstNumber> constArrayVal;
-        public Label globalArrayTag;
 
         public boolean isArray() {
             return dimension > 0;

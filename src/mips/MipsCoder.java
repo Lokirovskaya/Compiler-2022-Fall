@@ -26,7 +26,7 @@ public class MipsCoder {
 
     public void generateMips() {
         this.allocInfo = Allocator.alloc(inter);
-//        System.out.println(allocInfo);
+//        this.allocInfo.printAllocInfo();
         generate();
         MipsOptimizer.optimize(mipsList);
     }

@@ -24,6 +24,13 @@ public class NodeList<E> {
         tail.insertPrevSelf(e);
     }
 
+    public void clear() {
+        head.next.prev = null;
+        tail.prev.next = null;
+        head.next = tail;
+        tail.prev = head;
+    }
+
     public void forEach(Consumer<NodeListNode<E>> func) {
         // 对 delete 安全，允许一边遍历一遍删除
         // 用户操作的节点，实际上是 node.next

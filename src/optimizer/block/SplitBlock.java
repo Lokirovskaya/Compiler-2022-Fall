@@ -13,24 +13,27 @@ public class SplitBlock {
     // 返回所有函数各自的基本块 root
     // label 是入口语句
     // goto, branch 的下一条语句是入口语句
-    public static List<Block> run(InterCode inter) {
-        List<Block> funcBlockRootList = new ArrayList<>();
+    public static List<FuncBlocks> split(InterCode inter) {
+        List<FuncBlocks> funcBlocksList = new ArrayList<>();
 
-        Wrap<Boolean> inFunc = new Wrap<>(false);
         Wrap<Block> curBlock = new Wrap<>(null);
-        List<Block> allBlockList = new ArrayList<>();
-        inter.forEach(p -> {
-            // 跳过 .data 和全局数据，从第一个 func 开始
-            if (p.get().op == FUNC && !inFunc.get()) {
-                inFunc.set(true);
-            }
-            if (!inFunc.get()) return;
+        Wrap<FuncBlocks> curFuncBlocks = new Wrap<>(null);
+        // 全局区
+        curFuncBlocks.set(new FuncBlocks());
+        curFuncBlocks.get().funcName = ".global";
+        Block globalBlock = new Block();
+        curBlock.set(globalBlock);
+        curFuncBlocks.get().root = globalBlock;
 
+        inter.forEach(p -> {
             // 新函数开始
             if (p.get().op == FUNC) {
+                funcBlocksList.add(curFuncBlocks.get()); // 结算上一个
+                curFuncBlocks.set(new FuncBlocks());
+                curFuncBlocks.get().funcName = p.get().label.name;
                 Block newBlock = new Block();
                 curBlock.set(newBlock);
-                funcBlockRootList.add(newBlock);
+                curFuncBlocks.get().root = newBlock;
             }
 
             curBlock.get().blockInter.addLast(p.get());
@@ -40,31 +43,45 @@ public class SplitBlock {
                 Block.labelBlockMap.put(p.get().label, curBlock.get());
             }
 
-            // 当前 label 结束。这里只记录 jumpNextLabel，jumpNext 在本次遍历结束后回填
-            if (p.get().op == GOTO || isBranch(p.get().op) || (p.get(1) != null && p.get(1).op == LABEL)) {
-                allBlockList.add(curBlock.get());
-                if (isBranch(p.get().op)) {
-                    curBlock.get().next = new Block();
-                    curBlock.get().jumpNextLabel = p.get().label;
-                    curBlock.set(curBlock.get().next);
-                }
-                else if (p.get().op == GOTO) {
-                    curBlock.get().jumpNextLabel = p.get().label;
-                    curBlock.set(new Block());
-                }
-                else {
-                    curBlock.get().next = new Block();
-                    curBlock.set(curBlock.get().next);
-                }
+            // 当前 Block 结束：
+            // 1. 这条语句是 goto 或 branch（这里只记录 jumpNextLabel，jumpNext 在本次遍历结束后回填）
+            // 2. 下一条语句是 label
+            // 3. 下一条语句是 func，或没有下一条语句
+            // 4. 这条语句是 return
+            if (isBranch(p.get().op)) {
+                curFuncBlocks.get().blockList.add(curBlock.get());
+                curBlock.get().next = new Block();
+                curBlock.get().jumpNextLabel = p.get().label;
+                curBlock.set(curBlock.get().next);
+            }
+            else if (p.get().op == GOTO) {
+                curFuncBlocks.get().blockList.add(curBlock.get());
+                curBlock.get().jumpNextLabel = p.get().label;
+                curBlock.set(new Block());
+            }
+            else if (p.get(1) != null && p.get(1).op == LABEL) {
+                curFuncBlocks.get().blockList.add(curBlock.get());
+                curBlock.get().next = new Block();
+                curBlock.set(curBlock.get().next);
+            }
+            else if (p.get().op == RETURN || p.get(1) == null || p.get(1).op == FUNC) {
+                curFuncBlocks.get().blockList.add(curBlock.get());
+                curBlock.set(new Block());
             }
         });
+        // 结算 main
+        if (curFuncBlocks.get() != null) {
+            funcBlocksList.add(curFuncBlocks.get());
+        }
 
-        for (Block block : allBlockList) {
-            if (block.jumpNextLabel != null) {
-                block.jumpNext = Block.labelBlockMap.get(block.jumpNextLabel);
+        for (FuncBlocks funcBlocks : funcBlocksList) {
+            for (Block block : funcBlocks.blockList) {
+                if (block.jumpNextLabel != null) {
+                    block.jumpNext = Block.labelBlockMap.get(block.jumpNextLabel);
+                }
             }
         }
-        return funcBlockRootList;
+        return funcBlocksList;
     }
 
     private static boolean isBranch(Quaternion.OperatorType op) {

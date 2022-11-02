@@ -1,6 +1,5 @@
 package intercode;
 
-import intercode.Operand.VirtualReg;
 import util.NodeList;
 import util.NodeListNode;
 
@@ -9,7 +8,6 @@ import java.util.function.Consumer;
 
 public class InterCode {
     private final NodeList<Quaternion> list = new NodeList<>();
-
 
     public void output(String filename) throws IOException {
         ResultOutput.output(this, filename);
@@ -29,8 +27,11 @@ public class InterCode {
         list.addLast(q);
     }
 
+    public void clear() {
+        list.clear();
+    }
+
     public void forEach(Consumer<NodeListNode<Quaternion>> func) {
         list.forEach(func);
-
     }
 }

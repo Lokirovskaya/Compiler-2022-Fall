@@ -6,7 +6,7 @@ import static intercode.Quaternion.OperatorType.*;
 
 // 将判断语句合并到分支语句中去
 class MergeCondToBranch {
-    static InterCode run(InterCode inter) {
+    static void run(InterCode inter) {
         inter.forEach(p -> {
             switch (p.get().op) {
                 case NOT:
@@ -66,6 +66,5 @@ class MergeCondToBranch {
                     break;
             }
         });
-        return inter;
     }
 }

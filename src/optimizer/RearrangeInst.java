@@ -10,7 +10,7 @@ import static intercode.Quaternion.OperatorType.*;
 
 // Mips 有些指令不允许 x1 是立即数，x2 是寄存器，这里解决部分简单的情况，复杂的情况（如 sub, div）在最终代码生成中解决
 class RearrangeInst {
-    static InterCode run(InterCode inter) {
+    static void run(InterCode inter) {
         inter.forEach(p -> {
             if (p.get().x1 instanceof InstNumber && p.get().x2 instanceof VirtualReg) {
                 Quaternion.OperatorType op = p.get().op;
@@ -47,7 +47,6 @@ class RearrangeInst {
                 }
             }
         });
-        return inter;
     }
 
     private static void swapX1X2(Quaternion quater) {
