@@ -361,7 +361,7 @@ public class MipsCoder {
                     addRegMips("sub @t, $zero, @x1", quater);
                     break;
                 case NOT:
-                    addRegMips("xor @t, @t, 1", quater);
+                    addRegMips("seq @t, @x1, $zero", quater);
                     break;
                 case EQ:
                     addRegMips("seq @t, @rx1, @x2", quater);
@@ -370,8 +370,13 @@ public class MipsCoder {
                     addRegMips("sne @t, @rx1, @x2", quater);
                     break;
                 case LESS:
-                    if (quater.x2 instanceof InstNumber)
-                        addRegMips("slti @t, @rx1, @x2", quater);
+                    if (quater.x2 instanceof InstNumber) {
+                        int x = ((InstNumber) quater.x2).number;
+                        if (-32768 <= x && x <= 32767)
+                            addRegMips("slti @t, @rx1, @x2", quater);
+                        else
+                            addRegMips("slt @t, @rx1, @rx2", quater);
+                    }
                     else
                         addRegMips("slt @t, @rx1, @rx2", quater);
                     break;
