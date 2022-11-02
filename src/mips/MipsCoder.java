@@ -251,7 +251,7 @@ public class MipsCoder {
                         Operand o = p.get().list.get(i);
                         if (o instanceof VirtualReg) {
                             String initValReg = loadVregToReg((VirtualReg) o, "$t8");
-                            addMips("sw %s, %s+%d", initValReg, p.get().label, i * 4);
+                            addMips("sw %s, %s + %d", initValReg, p.get().label, i * 4);
                         }
                     }
                     break;
@@ -271,7 +271,7 @@ public class MipsCoder {
                 case GET_GLOBAL_ARRAY:
                     // @t = @label[@x2]
                     if (p.get().x2 instanceof InstNumber) {
-                        addRegMips(String.format("lw @t, @label+%d", ((InstNumber) p.get().x2).number * 4), p.get());
+                        addRegMips(String.format("lw @t, @label + %d", ((InstNumber) p.get().x2).number * 4), p.get());
                     }
                     else {
                         addRegMips("sll $t9, @rx2, 2", p.get());
@@ -298,7 +298,7 @@ public class MipsCoder {
                 case SET_GLOBAL_ARRAY:
                     // @label[@x1] = @x2
                     if (p.get().x1 instanceof InstNumber) {
-                        addRegMips(String.format("sw @rx2, @label+%d", ((InstNumber) p.get().x1).number * 4), p.get());
+                        addRegMips(String.format("sw @rx2, @label + %d", ((InstNumber) p.get().x1).number * 4), p.get());
                     }
                     else {
                         String indexReg = loadVregToReg((VirtualReg) p.get().x1, "$t8");
