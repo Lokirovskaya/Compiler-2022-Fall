@@ -32,7 +32,7 @@ public class MipsCoder {
 
     public void output(String filename) throws IOException {
         StringBuilder result = new StringBuilder();
-        mipsList.forEach(p -> result.append(p.get().code).append('\n'));
+        mipsList.forEachItem(quater -> result.append(quater.code).append('\n'));
         Files.write(Paths.get(filename), result.toString().getBytes(StandardCharsets.UTF_8));
     }
 
@@ -120,24 +120,24 @@ public class MipsCoder {
     private void generate() {
         addMips(".data");
         Wrap<Integer> stringIdx = new Wrap<>(1);
-        inter.forEach(p -> {
-            switch (p.get().op) {
+        inter.forEachItem(quater -> {
+            switch (quater.op) {
                 case PRINT_STR:
                     // 将 print_str 的 label 改为 str_%d
-                    addMips("str_%d: .asciiz \"%s\"", stringIdx.get(), p.get().label);
-                    p.get().label = new Label("str_" + stringIdx.get());
+                    addMips("str_%d: .asciiz \"%s\"", stringIdx.get(), quater.label);
+                    quater.label = new Label("str_" + stringIdx.get());
                     stringIdx.set(stringIdx.get() + 1);
                     break;
                 case GLOBAL_ALLOC: {
-                    int size = ((InstNumber) p.get().x1).number;
-                    if (p.get().list == null || p.get().list.size() == 0) {
-                        addMips("%s: .space %d", p.get().label, size * 4);
+                    int size = ((InstNumber) quater.x1).number;
+                    if (quater.list == null || quater.list.size() == 0) {
+                        addMips("%s: .space %d", quater.label, size * 4);
                     }
                     else {
-                        assert p.get().list.size() == size;
+                        assert quater.list.size() == size;
                         StringBuilder sb = new StringBuilder();
-                        sb.append(p.get().label).append(": .word ");
-                        for (Operand o : p.get().list) {
+                        sb.append(quater.label).append(": .word ");
+                        for (Operand o : quater.list) {
                             int wordVal = 0; // 不能确定的值，word 段填写 0
                             if (o instanceof InstNumber) wordVal = ((InstNumber) o).number;
                             sb.append(wordVal).append(", ");
@@ -150,8 +150,7 @@ public class MipsCoder {
         });
 
         addMips(".text");
-        inter.forEach(p -> {
-            Quaternion quater = p.get();
+        inter.forEachItem(quater -> {
 //            addMips("# %s (t=%s, x1=%s, x2=%s, label=%s)", op.name(), quater.target, quater.x1, quater.x2, quater.label);
             switch (quater.op) {
                 case FUNC:

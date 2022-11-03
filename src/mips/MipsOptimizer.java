@@ -10,7 +10,7 @@ class MipsOptimizer {
 
     private static void peepHole(NodeList<Mips> mips) {
         Wrap<Boolean> inText = new Wrap<>(false);
-        mips.forEach(p -> {
+        mips.forEachNode(p -> {
             if (p.get().code.equals(".text")) {
                 inText.set(true);
                 return;

@@ -17,11 +17,10 @@ public class ClearDeadCode {
         for (FuncBlocks funcBlocks : funcBlocksList) {
             for (Block block : funcBlocks.blockList) {
                 if (block.isReachable) {
-                    block.blockInter.forEach(p -> inter.addLast(p.get()));
+                    block.blockInter.forEachNode(p -> inter.addLast(p.get()));
                 }
             }
         }
-        funcBlocksList.forEach(f->f.printFuncBlocks());
     }
 
     private static void runFuncBlocks(Block block) {

@@ -7,7 +7,7 @@ import static intercode.Quaternion.OperatorType.*;
 // 将判断语句合并到分支语句中去
 class MergeCondToBranch {
     static void run(InterCode inter) {
-        inter.forEach(p -> {
+        inter.forEachNode(p -> {
             switch (p.get().op) {
                 case NOT:
                     if (p.get(1).op == IF) p.get(1).op = IF_NOT;

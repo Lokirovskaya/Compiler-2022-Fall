@@ -6,7 +6,7 @@ import static intercode.Quaternion.OperatorType.*;
 
 class ReduceBranch {
     static void run(InterCode inter) {
-        inter.forEach(p -> {
+        inter.forEachNode(p -> {
             while (true) {
                 // [if cond] goto A; {label X}; label A; -> {label X}; label A;
                 if (p.get(1) != null &&

@@ -2,12 +2,12 @@ package util;
 
 // 允许在循环中删除节点的链表
 // 循环中删除下一节点以及之后的节点是安全的，因此提供给用户的是下一节点的信息
-// 保证 this.next 不为空，详见 forEach 的实现
+// 保证 this.next 不为空，详见 forEachNode 的实现
 public class NodeListNode<E> {
     private E data;
     NodeListNode<E> prev, next;
     // 下一个节点是否被删除
-    // 如果是，则在 forEach 进入下一次循环时，不要移动 node，避免漏掉一个节点
+    // 如果是，则在 forEachNode 进入下一次循环时，不要移动 node，避免漏掉一个节点
     boolean nextDeleted = false;
 
     public E get() {

@@ -10,7 +10,7 @@ import static intercode.Quaternion.OperatorType.*;
 public class MergePrint {
     static void run(InterCode inter) {
         StringBuilder buff = new StringBuilder();
-        inter.forEach(p -> {
+        inter.forEachNode(p -> {
             String nowStr = getPrintString(p.get());
             String nextStr = p.get(1) == null ? null : getPrintString(p.get(1));
             if (nowStr != null && nextStr != null) {

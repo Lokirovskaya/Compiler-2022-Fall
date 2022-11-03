@@ -15,23 +15,23 @@ class Allocator {
         Wrap<AllocationInfo.FunctionInfo> curFuncInfo = new Wrap<>(null);
         Wrap<Integer> curOffset = new Wrap<>(0); // 0($sp) 的位置保留给 $ra
         Wrap<Integer> curGlobalOffset = new Wrap<>(-4); // $gp 空间，不需要留 $ra
-        inter.forEach(p -> {
+        inter.forEachItem(quater -> {
             // 函数
             // 遇到下一个 func，结算当前 func
-            if (p.get().op == FUNC) {
+            if (quater.op == FUNC) {
                 if (curFuncInfo.get() != null) {
                     curFuncInfo.get().size = curOffset.get() + 4;
                     allocInfo.funcMap.put(curFuncInfo.get().name, curFuncInfo.get());
                 }
                 curFuncInfo.set(new AllocationInfo.FunctionInfo());
-                curFuncInfo.get().name = p.get().label.name;
+                curFuncInfo.get().name = quater.label.name;
                 curOffset.set(0);
                 return;
             }
 
             // 变量
             // 对任意四元式中 vreg 的分配，跳过立即数、全局 vreg 和已分配寄存器的 vreg
-            for (Operand reg : new Operand[]{p.get().target, p.get().x1, p.get().x2}) {
+            for (Operand reg : new Operand[]{quater.target, quater.x1, quater.x2}) {
                 if (reg instanceof VirtualReg && ((VirtualReg) reg).realReg < 0) {
                     if (!allocInfo.vregOffsetMap.containsKey(reg)) {
                         if (((VirtualReg) reg).isGlobal) {
@@ -46,14 +46,14 @@ class Allocator {
                 }
             }
             // 记录参数对应的 vreg
-            if (p.get().op == PARAM) {
-                curFuncInfo.get().paramList.add(p.get().target);
+            if (quater.op == PARAM) {
+                curFuncInfo.get().paramList.add(quater.target);
             }
             // 分配数组空间，位置紧邻数组地址
-            else if (p.get().op == ALLOC) {
-                assert p.get().x1 instanceof InstNumber;
-                int arraySize = ((InstNumber) p.get().x1).number * 4;
-                if (p.get().target.isGlobal)
+            else if (quater.op == ALLOC) {
+                assert quater.x1 instanceof InstNumber;
+                int arraySize = ((InstNumber) quater.x1).number * 4;
+                if (quater.target.isGlobal)
                     curGlobalOffset.set(curGlobalOffset.get() + arraySize);
                 else
                     curOffset.set(curOffset.get() + arraySize);

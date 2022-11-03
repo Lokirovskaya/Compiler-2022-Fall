@@ -11,12 +11,12 @@ import static intercode.Quaternion.OperatorType.*;
 class ClearLabel {
     static void run(InterCode inter) {
         Set<Label> labelRef = new HashSet<>();
-        inter.forEach(p -> {
-            if (p.get().op == GOTO || p.get().op == IF || p.get().op == IF_NOT || p.get().op == IF_EQ || p.get().op == IF_NOT_EQ
-                    || p.get().op == IF_LESS || p.get().op == IF_GREATER || p.get().op == IF_LESS_EQ || p.get().op == IF_GREATER_EQ)
-                labelRef.add(p.get().label);
+        inter.forEachItem(quater -> {
+            if (quater.op == GOTO || quater.op == IF || quater.op == IF_NOT || quater.op == IF_EQ || quater.op == IF_NOT_EQ
+                    || quater.op == IF_LESS || quater.op == IF_GREATER || quater.op == IF_LESS_EQ || quater.op == IF_GREATER_EQ)
+                labelRef.add(quater.label);
         });
-        inter.forEach(p -> {
+        inter.forEachNode(p -> {
             if (p.get().op == LABEL && !labelRef.contains(p.get().label)) p.delete();
         });
     }

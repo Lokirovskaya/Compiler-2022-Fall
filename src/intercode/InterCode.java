@@ -19,6 +19,10 @@ public class InterCode {
         return list.getFirst();
     }
 
+    public Quaternion getLast() {
+        return list.getLast();
+    }
+
     public void addFirst(Quaternion q) {
         list.addFirst(q);
     }
@@ -31,7 +35,15 @@ public class InterCode {
         list.clear();
     }
 
-    public void forEach(Consumer<NodeListNode<Quaternion>> func) {
-        list.forEach(func);
+    public void forEachNode(Consumer<NodeListNode<Quaternion>> func) {
+        list.forEachNode(func);
+    }
+
+    public void forEachItem(Consumer<Quaternion> func) {
+        list.forEachItem(func);
+    }
+
+    public void forEachItemReverse(Consumer<Quaternion> func) {
+        list.forEachItemReverse(func);
     }
 }

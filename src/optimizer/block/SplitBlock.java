@@ -25,7 +25,7 @@ public class SplitBlock {
         curBlock.set(globalBlock);
         curFuncBlocks.get().root = globalBlock;
 
-        inter.forEach(p -> {
+        inter.forEachNode(p -> {
             // 新函数开始
             if (p.get().op == FUNC) {
                 funcBlocksList.add(curFuncBlocks.get()); // 结算上一个
