@@ -1,6 +1,6 @@
 package intercode;
 
-import optimizer.block.LiveRange;
+import optimizer.register.LiveRange;
 
 import java.util.List;
 
@@ -9,6 +9,7 @@ public abstract class Operand {
         public int regID;
         public int tableID;
         public boolean isAddr;
+        public boolean isParam;
         public boolean isGlobal;
         public String name;
         // 储存管理相关

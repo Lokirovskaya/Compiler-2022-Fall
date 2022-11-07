@@ -10,7 +10,6 @@ import util.NodeList;
 import util.Wrap;
 
 import java.io.IOException;
-import java.lang.annotation.Target;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -39,7 +38,7 @@ public class MipsCoder {
 
     private static final String[] regNames = {"zero", "at", "v0", "v1", "a0", "a1", "a2", "a3", "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "t8", "t9", "k0", "k1", "gp", "sp", "fp", "ra"};
 
-    private static String getRegName(int reg) {
+    public static String getRegName(int reg) {
         return "$" + regNames[reg];
     }
 
@@ -191,14 +190,14 @@ public class MipsCoder {
                         Operand paramCall = quater.list.get(i); // 实参（是 vreg 还是立即数）
 
                         // 建立 实参 -> 形参 的传递
-                        if (paramDef.getRealReg(quater.id) >= 0) {
-                            String paramDefReg = getRegName(paramDef.getRealReg(quater.id));
+                        int paramDefRegId = paramDef.regRangeList == null ? -1 : paramDef.regRangeList.get(0).realReg;
+                        if (paramDefRegId >= 0) {
                             if (paramCall instanceof InstNumber) {
-                                addMips("li %s, %d", paramDefReg, ((InstNumber) paramCall).number);
+                                addMips("li %s, %d", getRegName(paramDefRegId), ((InstNumber) paramCall).number);
                             }
                             else if (paramCall instanceof VirtualReg) {
                                 String paramCallReg = loadVregToReg((VirtualReg) paramCall, quater.id, "$t8");
-                                addMips("move %s, %s", paramDefReg, paramCallReg);
+                                addMips("move %s, %s", getRegName(paramDefRegId), paramCallReg);
                             }
                         }
                         else {
@@ -445,25 +444,32 @@ public class MipsCoder {
                     addRegMips("move @t, $v0", quater);
                     break;
                 case PRINT_STR:
+                    // todo: 可以优化掉保存 a0 的步骤
+                    addMips("move $t9, $a0");
                     addMips("la $a0, %s", quater.label);
                     addMips("li $v0, 4");
                     addMips("syscall");
+                    addMips("move $a0, $t9");
                     break;
                 case PRINT_CHAR:
+                    addMips("move $t9, $a0");
                     if (quater.x1 instanceof VirtualReg)
                         addRegMips("move $a0, @rx1", quater);
                     else
                         addRegMips("li $a0, @x1", quater);
                     addMips("li $v0, 11");
                     addMips("syscall");
+                    addMips("move $a0, $t9");
                     break;
                 case PRINT_INT:
+                    addMips("move $t9, $a0");
                     if (quater.x1 instanceof VirtualReg)
                         addRegMips("move $a0, @rx1", quater);
                     else
                         addRegMips("li $a0, @x1", quater);
                     addMips("li $v0, 1");
                     addMips("syscall");
+                    addMips("move $a0, $t9");
                     break;
             }
         });

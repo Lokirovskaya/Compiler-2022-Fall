@@ -1,4 +1,4 @@
-package optimizer.block;
+package optimizer.register;
 
 import intercode.Operand;
 

@@ -4,6 +4,7 @@ import intercode.InterCode;
 import optimizer.peephole.MergeCondToBranch;
 import optimizer.peephole.RearrangeInst;
 import optimizer.peephole.ReduceBranch;
+import optimizer.register.RegAlloc;
 
 public class Optimizer {
     public static void optimize(InterCode inter) {

@@ -235,6 +235,7 @@ public class Generator {
         Token ident = (Token) paramDef.child(1);
         Symbol.Var param = getVar(ident);
         VirtualReg paramReg = getVarReg(ident);
+        paramReg.isParam = true;
         if (param.isArray()) {
             // BType Ident '[' ']' '[' ConstExp ']'
             if (param.dimension == 1) {

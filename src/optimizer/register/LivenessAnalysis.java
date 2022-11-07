@@ -1,7 +1,9 @@
-package optimizer.block;
+package optimizer.register;
 
 import intercode.Operand;
 import intercode.Operand.VirtualReg;
+import optimizer.block.Block;
+import optimizer.block.FuncBlocks;
 
 import java.util.*;
 import java.util.function.BiConsumer;
@@ -39,14 +41,21 @@ public class LivenessAnalysis {
             block.blockInter.forEachItem(quater -> {
                 VirtualReg target = quater.target;
                 Operand x1 = quater.x1, x2 = quater.x2;
+                // use
                 if (x1 instanceof VirtualReg && !block.def.contains(x1) && !((VirtualReg) x1).isGlobal)
                     block.use.add((VirtualReg) x1);
                 if (x2 instanceof VirtualReg && !block.def.contains(x2) && !((VirtualReg) x2).isGlobal)
                     block.use.add((VirtualReg) x2);
-                // SET_ARRAY 的 @t 是假的 target，它应当是 use 而非 def
                 if (quater.op == SET_ARRAY && !block.def.contains(target) && !target.isGlobal)
                     block.use.add(target);
-
+                if (quater.list != null) {
+                    for (Operand o : quater.list) {
+                        if (o instanceof VirtualReg && !block.def.contains(o) && !((VirtualReg) o).isGlobal) {
+                            block.use.add((VirtualReg) o);
+                        }
+                    }
+                }
+                // def
                 if (target != null && quater.op != SET_ARRAY && !block.use.contains(target) && !target.isGlobal)
                     block.def.add(target);
 
@@ -86,12 +95,16 @@ public class LivenessAnalysis {
                 VirtualReg target = quater.target;
                 Operand x1 = quater.x1, x2 = quater.x2;
 
+                // def
                 if (target != null && quater.op != SET_ARRAY) {
                     List<LiveRange> ranges = vregRangesOfVregMap.get(target);
                     if (ranges != null)
                         ranges.get(ranges.size() - 1).start = quater.id;
+                    else
+                        addRange.accept(target, new LiveRange(target, quater.id, quater.id));
                 }
 
+                // use
                 if (quater.op == SET_ARRAY && target != null && !target.isGlobal) {
                     addRange.accept(target, new LiveRange(target, blockStart, quater.id));
                     addUsePoint.accept(target, quater.id);
@@ -104,8 +117,14 @@ public class LivenessAnalysis {
                     addRange.accept((VirtualReg) x2, new LiveRange((VirtualReg) x2, blockStart, quater.id));
                     addUsePoint.accept((VirtualReg) x2, quater.id);
                 }
-
-
+                if (quater.list != null) {
+                    for (Operand o : quater.list) {
+                        if (o instanceof VirtualReg && !((VirtualReg) o).isGlobal) {
+                            addRange.accept((VirtualReg) o, new LiveRange((VirtualReg) o, blockStart, quater.id));
+                            addUsePoint.accept((VirtualReg) o, quater.id);
+                        }
+                    }
+                }
             });
         }
         vregRangesOfVregMap.values().forEach(rangesOfVreg -> mergeLiveRanges(rangesOfVreg));
