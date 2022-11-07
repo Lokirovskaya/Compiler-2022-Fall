@@ -2,10 +2,14 @@ package optimizer.block;
 
 import intercode.Operand;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class LiveRange {
     public Operand.VirtualReg vreg;
     public int start, end; // 左右闭区间
-    public boolean freed = false;
+    public int realReg = -1;
+    public List<Integer> usePointList = new ArrayList<>();
 
     public LiveRange(Operand.VirtualReg vreg, int start, int end) {
         this.vreg = vreg;
@@ -15,6 +19,6 @@ public class LiveRange {
 
     @Override
     public String toString() {
-        return String.format("{%s (%d, %d)}", vreg.toString(), start, end);
+        return String.format("{vreg: %s, reg: %d, range: [%d, %d], use: %s}", vreg.toString(), realReg, start, end, usePointList);
     }
 }

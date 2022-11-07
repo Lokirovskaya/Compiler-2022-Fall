@@ -3,14 +3,13 @@ package optimizer;
 import intercode.InterCode;
 import intercode.Operand.VirtualReg;
 import optimizer.block.*;
-import util.Pair;
 import util.Wrap;
 
 import java.util.*;
 
 public class RegAlloc {
     static void run(InterCode inter) {
-        // 为中间代码编号，此后，请勿再改动中间代码，即需保证 RegAlloc 是优化的最后一步
+        // 为中间代码编号
         Wrap<Integer> id = new Wrap<>(1);
         inter.forEachItem(quater -> {
             quater.id = id.get();
@@ -18,56 +17,67 @@ public class RegAlloc {
         });
 
         for (FuncBlocks funcBlocks : SplitBlock.split(inter)) {
-            List<LiveRange> liveRangeList = getLiveRangeListOfFunc(LivenessAnalysis.run(funcBlocks));
+            Map<VirtualReg, List<LiveRange>> vregRangesOfVregMap = LivenessAnalysis.run(funcBlocks);
+            // 已分配寄存器的活跃区间集合，不需要有序
+            Set<LiveRange> active = new HashSet<>();
+            // 未活跃的区间集合，需要按开始时间升序
+            List<LiveRange> unhandled = new ArrayList<>();
+            // 分配的结果
+            List<LiveRange> allocResult = new ArrayList<>();
+
+            // 初始化 unhandled
+            vregRangesOfVregMap.values().forEach(rangesOfVreg -> unhandled.addAll(rangesOfVreg));
+            unhandled.sort(Comparator.comparingInt(range -> range.start));
 
             RegPool pool = new RegPool();
-            for (LiveRange range : liveRangeList) {
-                if (range.vreg.isGlobal) continue;
-                // 寻找在 currentQuaterId 时已经过期的 LiveRange r，free 它们占用的 reg
-                for (LiveRange r : liveRangeList) {
-                    if (r.end < range.start && !r.freed) {
-                        if (r.vreg.realReg != -1) {
-                            pool.free(r.vreg.realReg);
-                            r.freed = true;
-                        }
+            for (LiveRange curRange : unhandled) {
+                // 寻找 curRange.start 时已经死去的 range，回收它的寄存器，将其移出 active，进入 result
+                active.removeIf(range -> {
+                    if (range.end < curRange.start) {
+                        pool.free(range.realReg);
+                        allocResult.add(range);
                     }
-                }
-                // 分配 reg
+                    return range.end < curRange.start;
+                });
+
                 Integer reg = pool.get();
                 if (reg != null) {
-                    range.vreg.realReg = reg;
+                    curRange.realReg = reg;
+                    active.add(curRange);
                 }
-                // 寻找已经分配 reg 了的，未被 free 的，end 最大的 range，抢夺它占用的 reg，如果它没有占用 reg，放弃分配
                 else {
-                    LiveRange rangeToBeSpill = liveRangeList.stream()
-                            .filter(r -> r.vreg.realReg > 0)
-                            .filter(r -> !r.freed)
-                            .max(Comparator.comparingInt(r -> r.end))
-                            .orElse(null);
-                    if (rangeToBeSpill != null) {
-
+                    // 对所有的 active，以及自身，计算溢出权重
+                    int selfSpillWeight;
+                    int minActiveSpillWeight = Integer.MAX_VALUE;
+                    LiveRange minActiveSpillRange = null;
+                    // 溢出权重 = sum (curRange.start 之后的使用次数 * k)，todo: 循环中 k 取 3
+                    selfSpillWeight = curRange.usePointList.size();
+                    for (LiveRange r : active) {
+                        int w = (int) r.usePointList.stream()
+                                .filter(use -> use >= curRange.start)
+                                .count();
+                        if (w < minActiveSpillWeight) {
+                            minActiveSpillWeight = w;
+                            minActiveSpillRange = r;
+                        }
+                    }
+                    // 溢出权重最小的 reg。如果 self 权重最小，什么都不做
+                    if (selfSpillWeight <= minActiveSpillWeight) continue;
+                    else {
+                        curRange.realReg = minActiveSpillRange.realReg;
+                        active.add(curRange);
+                        active.remove(minActiveSpillRange);
                     }
                 }
             }
+            allocResult.addAll(active);
 
-            System.out.println(funcBlocks.funcName);
-            System.out.println(liveRangeList);
-        }
-    }
-
-    // 返回一个 func 下所有 vreg 的最早 start 和最晚 end 组成的 range 列表，按 start 排序
-    private static List<LiveRange> getLiveRangeListOfFunc(Map<VirtualReg, List<LiveRange>> vregLiveRangesMap) {
-        List<LiveRange> liveRangeList = new ArrayList<>();
-        for (List<LiveRange> liveRangesOfOneVreg : vregLiveRangesMap.values()) {
-            if (liveRangesOfOneVreg.size() == 1) liveRangeList.add(liveRangesOfOneVreg.get(0));
-            else {
-                int start = liveRangesOfOneVreg.get(0).start;
-                int end = liveRangesOfOneVreg.get(liveRangesOfOneVreg.size() - 1).end;
-                liveRangeList.add(new LiveRange(liveRangesOfOneVreg.get(0).vreg, start, end));
+            for (LiveRange range : allocResult) {
+                range.vreg.regRangeList.add(range);
             }
+            // 输出分配表
+            System.out.println(allocResult);
         }
-        liveRangeList.sort(Comparator.comparingInt(range -> range.start));
-        return liveRangeList;
     }
 
     private static class RegPool {
@@ -80,8 +90,7 @@ public class RegAlloc {
 
         // 若返回 null，表示池已空
         Integer get() {
-            if (regPool.isEmpty()) return null;
-            else return regPool.pollFirst();
+            return regPool.pollFirst();
         }
 
         // 放回一个寄存器
