@@ -73,6 +73,8 @@ public class RegAlloc {
             allocResult.addAll(active);
 
             for (LiveRange range : allocResult) {
+                if (range.vreg.regRangeList == null)
+                    range.vreg.regRangeList = new ArrayList<>();
                 range.vreg.regRangeList.add(range);
             }
             // 输出分配表

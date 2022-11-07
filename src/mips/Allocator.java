@@ -53,10 +53,14 @@ class Allocator {
             else if (quater.op == ALLOC) {
                 assert quater.x1 instanceof InstNumber;
                 int arraySize = ((InstNumber) quater.x1).number * 4;
-                if (quater.target.isGlobal)
+                if (quater.target.isGlobal) {
+                    quater.target.stackOffset = curGlobalOffset.get();
                     curGlobalOffset.set(curGlobalOffset.get() + arraySize);
-                else
+                }
+                else {
+                    quater.target.stackOffset = curOffset.get();
                     curOffset.set(curOffset.get() + arraySize);
+                }
             }
         });
         curFuncInfo.get().size = curOffset.get() + 4;
