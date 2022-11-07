@@ -7,17 +7,15 @@ import java.util.List;
 import static intercode.Quaternion.OperatorType.*;
 
 public class Quaternion {
-    public int id;
-    static int idTop = 1;
     public OperatorType op;
     public VirtualReg target;
     public Operand x1, x2;
     public Label label;
     public List<Operand> list;
+    public int id = -1; // 仅寄存器分配时用
 
     // not public
     Quaternion(OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
-        this.id = idTop++;
         this.op = op;
         this.target = target;
         this.x1 = x1;
@@ -37,52 +35,50 @@ public class Quaternion {
 
     @Override
     public String toString() {
-        String str;
-        if (op == SET) str = String.format("%s = %s", target, x1);
-        else if (op == ADD) str = String.format("%s = %s + %s", target, x1, x2);
-        else if (op == SUB) str = String.format("%s = %s - %s", target, x1, x2);
-        else if (op == MULT) str = String.format("%s = %s * %s", target, x1, x2);
-        else if (op == DIV) str = String.format("%s = %s / %s", target, x1, x2);
-        else if (op == MOD) str = String.format("%s = %s %% %s", target, x1, x2);
-        else if (op == NEG) str = String.format("%s = -%s", target, x1);
-        else if (op == GET_ARRAY) str = String.format("%s = %s[%s]", target, x1, x2);
-        else if (op == SET_ARRAY) str = String.format("%s[%s] = %s", target, x1, x2);
-        else if (op == ADD_ADDR) str = String.format("%s = &(%s[%s])", target, x1, x2);
-        else if (op == GET_GLOBAL_ARRAY) str = String.format("%s = %s[%s]", target, label, x2);
-        else if (op == SET_GLOBAL_ARRAY) str = String.format("%s[%s] = %s", label, x1, x2);
-        else if (op == ADD_GLOBAL_ADDR) str = String.format("%s = &(%s[%s])", target, label, x2);
-        else if (op == IF) str = String.format("if %s goto %s", x1, label);
-        else if (op == IF_NOT) str = String.format("if_not %s goto %s", x1, label);
-        else if (op == IF_EQ) str = String.format("if_cond %s == %s goto %s", x1, x2, label);
-        else if (op == IF_NOT_EQ) str = String.format("if_cond %s != %s goto %s", x1, x2, label);
-        else if (op == IF_LESS) str = String.format("if_cond %s < %s goto %s", x1, x2, label);
-        else if (op == IF_LESS_EQ) str = String.format("if_cond %s <= %s goto %s", x1, x2, label);
-        else if (op == IF_GREATER) str = String.format("if_cond %s > %s goto %s", x1, x2, label);
-        else if (op == IF_GREATER_EQ) str = String.format("if_cond %s >= %s goto %s", x1, x2, label);
-        else if (op == NOT) str = String.format("%s = !%s", target, x1);
-        else if (op == EQ) str = String.format("%s = %s == %s", target, x1, x2);
-        else if (op == NOT_EQ) str = String.format("%s = %s != %s", target, x1, x2);
-        else if (op == LESS) str = String.format("%s = %s < %s", target, x1, x2);
-        else if (op == LESS_EQ) str = String.format("%s = %s <= %s", target, x1, x2);
-        else if (op == GREATER) str = String.format("%s = %s > %s", target, x1, x2);
-        else if (op == GREATER_EQ) str = String.format("%s = %s >= %s", target, x1, x2);
-        else if (op == GETINT) str = String.format("%s = getint", target);
-        else if (op == PRINT_INT) str = String.format("print_int %s", x1);
-        else if (op == PRINT_STR) str = String.format("print_str \"%s\"", label);
-        else if (op == PRINT_CHAR) str = String.format("print_char %s", x1);
-        else if (op == FUNC) str = String.format("func %s", label);
-        else if (op == LABEL) str = String.format("%s:", label);
-        else if (op == GOTO) str = String.format("goto %s", label);
-        else if (op == RETURN) str = "return";
-        else if (op == SET_RETURN) str = String.format("RET = %s", x1);
-        else if (op == GET_RETURN) str = String.format("%s = RET", target);
-        else if (op == EXIT) str = "exit";
-        else if (op == CALL) str = String.format("call %s %s", label, operandListToString(list));
-        else if (op == PARAM) str = String.format("param %s", target);
-        else if (op == ALLOC) str = String.format("%s = alloc %s %s", target, x1, operandListToString(list));
-        else if (op == GLOBAL_ALLOC) str = String.format("%s = global_alloc %s %s", label, x1, operandListToString(list));
+        if (op == SET) return String.format("%s = %s", target, x1);
+        else if (op == ADD) return String.format("%s = %s + %s", target, x1, x2);
+        else if (op == SUB) return String.format("%s = %s - %s", target, x1, x2);
+        else if (op == MULT) return String.format("%s = %s * %s", target, x1, x2);
+        else if (op == DIV) return String.format("%s = %s / %s", target, x1, x2);
+        else if (op == MOD) return String.format("%s = %s %% %s", target, x1, x2);
+        else if (op == NEG) return String.format("%s = -%s", target, x1);
+        else if (op == GET_ARRAY) return String.format("%s = %s[%s]", target, x1, x2);
+        else if (op == SET_ARRAY) return String.format("%s[%s] = %s", target, x1, x2);
+        else if (op == ADD_ADDR) return String.format("%s = &(%s[%s])", target, x1, x2);
+        else if (op == GET_GLOBAL_ARRAY) return String.format("%s = %s[%s]", target, label, x2);
+        else if (op == SET_GLOBAL_ARRAY) return String.format("%s[%s] = %s", label, x1, x2);
+        else if (op == ADD_GLOBAL_ADDR) return String.format("%s = &(%s[%s])", target, label, x2);
+        else if (op == IF) return String.format("if %s goto %s", x1, label);
+        else if (op == IF_NOT) return String.format("if_not %s goto %s", x1, label);
+        else if (op == IF_EQ) return String.format("if_cond %s == %s goto %s", x1, x2, label);
+        else if (op == IF_NOT_EQ) return String.format("if_cond %s != %s goto %s", x1, x2, label);
+        else if (op == IF_LESS) return String.format("if_cond %s < %s goto %s", x1, x2, label);
+        else if (op == IF_LESS_EQ) return String.format("if_cond %s <= %s goto %s", x1, x2, label);
+        else if (op == IF_GREATER) return String.format("if_cond %s > %s goto %s", x1, x2, label);
+        else if (op == IF_GREATER_EQ) return String.format("if_cond %s >= %s goto %s", x1, x2, label);
+        else if (op == NOT) return String.format("%s = !%s", target, x1);
+        else if (op == EQ) return String.format("%s = %s == %s", target, x1, x2);
+        else if (op == NOT_EQ) return String.format("%s = %s != %s", target, x1, x2);
+        else if (op == LESS) return String.format("%s = %s < %s", target, x1, x2);
+        else if (op == LESS_EQ) return String.format("%s = %s <= %s", target, x1, x2);
+        else if (op == GREATER) return String.format("%s = %s > %s", target, x1, x2);
+        else if (op == GREATER_EQ) return String.format("%s = %s >= %s", target, x1, x2);
+        else if (op == GETINT) return String.format("%s = getint", target);
+        else if (op == PRINT_INT) return String.format("print_int %s", x1);
+        else if (op == PRINT_STR) return String.format("print_str \"%s\"", label);
+        else if (op == PRINT_CHAR) return String.format("print_char %s", x1);
+        else if (op == FUNC) return String.format("func %s", label);
+        else if (op == LABEL) return String.format("%s:", label);
+        else if (op == GOTO) return String.format("goto %s", label);
+        else if (op == RETURN) return "return";
+        else if (op == SET_RETURN) return String.format("RET = %s", x1);
+        else if (op == GET_RETURN) return String.format("%s = RET", target);
+        else if (op == EXIT) return "exit";
+        else if (op == CALL) return String.format("call %s %s", label, operandListToString(list));
+        else if (op == PARAM) return String.format("param %s", target);
+        else if (op == ALLOC) return String.format("%s = alloc %s %s", target, x1, operandListToString(list));
+        else if (op == GLOBAL_ALLOC) return String.format("%s = global_alloc %s %s", label, x1, operandListToString(list));
         else return null;
-        return id + "  " + str;
     }
 
     private static String operandListToString(List<Operand> list) {

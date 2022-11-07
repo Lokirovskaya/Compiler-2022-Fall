@@ -1,6 +1,9 @@
 package optimizer;
 
 import intercode.InterCode;
+import optimizer.peephole.MergeCondToBranch;
+import optimizer.peephole.RearrangeInst;
+import optimizer.peephole.ReduceBranch;
 
 public class Optimizer {
     public static void optimize(InterCode inter) {
@@ -12,7 +15,8 @@ public class Optimizer {
         ReduceBranch.run(inter);
         MergePrint.run(inter);
         ClearLabel.run(inter);
-        // 请保证 RegAlloc 是最后一步
+
 //        RegAlloc.run(inter);
     }
+
 }

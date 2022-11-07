@@ -30,17 +30,17 @@ class Allocator {
             }
 
             // 变量
-            // 对任意四元式中 vreg 的分配，跳过立即数、全局 vreg 和已分配寄存器的 vreg
+            // 对任意四元式中 vreg 的分配，跳过立即数和已分配寄存器的 vreg
             for (Operand reg : new Operand[]{quater.target, quater.x1, quater.x2}) {
-                if (reg instanceof VirtualReg && ((VirtualReg) reg).realReg < 0) {
-                    if (!allocInfo.vregOffsetMap.containsKey(reg)) {
+                if (reg instanceof VirtualReg && ((VirtualReg) reg).getRealReg(quater.id) < 0) {
+                    if (((VirtualReg) reg).stackOffset < 0) {
                         if (((VirtualReg) reg).isGlobal) {
                             curGlobalOffset.set(curGlobalOffset.get() + 4);
-                            allocInfo.vregOffsetMap.put((VirtualReg) reg, curGlobalOffset.get());
+                            ((VirtualReg) reg).stackOffset = curGlobalOffset.get();
                         }
                         else {
                             curOffset.set(curOffset.get() + 4);
-                            allocInfo.vregOffsetMap.put((VirtualReg) reg, curOffset.get());
+                            ((VirtualReg) reg).stackOffset = curOffset.get();
                         }
                     }
                 }

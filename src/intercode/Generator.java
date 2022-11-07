@@ -26,7 +26,6 @@ public class Generator {
     public Generator(TreeNode syntaxTreeRoot, Map<Token, Symbol> identSymbolMap) {
         this.syntaxTreeRoot = syntaxTreeRoot;
         this.identSymbolMap = identSymbolMap;
-        Quaternion.idTop = 1;
     }
 
     public InterCode generate() {

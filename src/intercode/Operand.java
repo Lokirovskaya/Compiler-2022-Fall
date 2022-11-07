@@ -1,16 +1,34 @@
 package intercode;
 
+import optimizer.block.LiveRange;
+
+import java.util.List;
+
 public abstract class Operand {
     public static class VirtualReg extends Operand {
         public int regID;
-        public int realReg = -1; // 分配了的实寄存器
         public int tableID;
         public boolean isAddr;
         public boolean isGlobal;
         public String name;
+        // 储存管理相关
+        public List<LiveRange> regRangeList;
+        public int stackOffset = -1; // -1 表示未在栈上分配
 
-        public VirtualReg(int r) {
-            this.regID = r;
+        public VirtualReg(int regID) {
+            this.regID = regID;
+        }
+
+        // 获取 this 在某一行的寄存器，未分配返回 -1
+        public int getRealReg(int lineNumber) {
+            if (lineNumber <= 0) return -1;
+            if (regRangeList == null) return -1;
+            for (LiveRange range : regRangeList) {
+                if (range.start <= lineNumber && lineNumber <= range.end) {
+                    return range.realReg;
+                }
+            }
+            return -1;
         }
 
         @Override
@@ -23,7 +41,6 @@ public abstract class Operand {
             if (name != null) {
                 sb.append('_').append(name);
             }
-            if (realReg >= 0) sb.append('$').append(realReg);
             return sb.toString();
         }
     }
