@@ -1,11 +1,11 @@
-package optimizer;
+package optimizer.peephole;
 
 import intercode.InterCode;
 
 import static intercode.Quaternion.OperatorType.*;
 
-class ReduceBranch {
-    static void run(InterCode inter) {
+public class ReduceBranch {
+    public static void run(InterCode inter) {
         inter.forEachNode(p -> {
             while (true) {
                 // [if cond] goto A; {label X}; label A; -> {label X}; label A;

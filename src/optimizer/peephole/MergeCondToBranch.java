@@ -1,12 +1,12 @@
-package optimizer;
+package optimizer.peephole;
 
 import intercode.InterCode;
 
 import static intercode.Quaternion.OperatorType.*;
 
 // 将判断语句合并到分支语句中去
-class MergeCondToBranch {
-    static void run(InterCode inter) {
+public class MergeCondToBranch {
+    public static void run(InterCode inter) {
         inter.forEachNode(p -> {
             switch (p.get().op) {
                 case NOT:
