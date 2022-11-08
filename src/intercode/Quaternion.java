@@ -3,6 +3,7 @@ package intercode;
 import intercode.Operand.VirtualReg;
 
 import java.util.List;
+import java.util.Set;
 
 import static intercode.Quaternion.OperatorType.*;
 
@@ -13,6 +14,7 @@ public class Quaternion {
     public Label label;
     public List<Operand> list;
     public int id = -1; // 仅寄存器分配时用
+    public Set<Integer> activeRegList; // 当前活跃的寄存器，只对 CALL，PRINT 指令记录
 
     // not public
     Quaternion(OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
@@ -25,9 +27,9 @@ public class Quaternion {
 
     public enum OperatorType {
         ADD, SUB, MULT, DIV, MOD, NEG, NOT, EQ, NOT_EQ, LESS, LESS_EQ, GREATER, GREATER_EQ,
-        IF, GOTO, FUNC, CALL, RETURN, EXIT, SET_RETURN, GET_RETURN,
+        IF, GOTO, FUNC, CALL, RETURN, ENTER_MAIN, SET_RETURN, GET_RETURN,
         SET, GET_ARRAY, SET_ARRAY, ADD_ADDR, GET_GLOBAL_ARRAY, SET_GLOBAL_ARRAY, ADD_GLOBAL_ADDR,
-        LABEL, PARAM, ALLOC, GLOBAL_ALLOC,
+        LABEL, ALLOC, GLOBAL_ALLOC,
         GETINT, PRINT_STR, PRINT_INT, PRINT_CHAR,
         // 优化中会出现的操作码
         IF_NOT, IF_EQ, IF_NOT_EQ, IF_LESS, IF_LESS_EQ, IF_GREATER, IF_GREATER_EQ,
@@ -67,15 +69,14 @@ public class Quaternion {
         else if (op == PRINT_INT) return String.format("print_int %s", x1);
         else if (op == PRINT_STR) return String.format("print_str \"%s\"", label);
         else if (op == PRINT_CHAR) return String.format("print_char %s", x1);
-        else if (op == FUNC) return String.format("func %s", label);
+        else if (op == FUNC) return String.format("func %s %s", label, operandListToString(list));
         else if (op == LABEL) return String.format("%s:", label);
         else if (op == GOTO) return String.format("goto %s", label);
         else if (op == RETURN) return "return";
         else if (op == SET_RETURN) return String.format("RET = %s", x1);
         else if (op == GET_RETURN) return String.format("%s = RET", target);
-        else if (op == EXIT) return "exit";
+        else if (op == ENTER_MAIN) return "enter_main";
         else if (op == CALL) return String.format("call %s %s", label, operandListToString(list));
-        else if (op == PARAM) return String.format("param %s", target);
         else if (op == ALLOC) return String.format("%s = alloc %s %s", target, x1, operandListToString(list));
         else if (op == GLOBAL_ALLOC) return String.format("%s = global_alloc %s %s", label, x1, operandListToString(list));
         else return null;

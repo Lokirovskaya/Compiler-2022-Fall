@@ -208,29 +208,34 @@ public class Generator {
     private void FUNCTION_DEFINE(Nonterminal def) {
         assert def.isType(_FUNCTION_DEFINE_) || def.isType(_MAIN_FUNCTION_DEFINE_);
         if (firstFunc) {
-            newQuater(OperatorType.CALL, null, null, null, new Label("main"));
-            newQuater(OperatorType.EXIT, null, null, null, null);
+            newQuater(OperatorType.ENTER_MAIN, null, null, null, null);
             firstFunc = false;
         }
 
+        Quaternion funcDefQuater;
         if (def.isType(_MAIN_FUNCTION_DEFINE_)) {
-            newQuater(OperatorType.FUNC, null, null, null, new Label("main"));
+            funcDefQuater = new Quaternion(OperatorType.FUNC, null, null, null, new Label("main"));
+            funcDefQuater.list = new ArrayList<>();
+            inter.addLast(funcDefQuater);
         }
         else {
             // FuncDef → FuncType Ident '(' [FuncFParams] ')' Block
             Symbol.Function func = getFunc((Token) def.child(1));
-            newQuater(OperatorType.FUNC, null, null, null, new Label(func.name));
+            funcDefQuater = new Quaternion(OperatorType.FUNC, null, null, null, new Label(func.name));
+            funcDefQuater.list = new ArrayList<>();
+            inter.addLast(funcDefQuater);
+
             if (def.child(3).isType(_FUNCTION_DEFINE_PARAM_LIST_)) {
                 for (TreeNode p : ((Nonterminal) def.child(3)).children) {
                     if (p.isType(_FUNCTION_DEFINE_PARAM_))
-                        FUNCTION_DEFINE_PARAM((Nonterminal) p);
+                        FUNCTION_DEFINE_PARAM((Nonterminal) p, funcDefQuater);
                 }
             }
         }
         BLOCK(def.child(def.children.size() - 1));
     }
 
-    private void FUNCTION_DEFINE_PARAM(Nonterminal paramDef) {
+    private void FUNCTION_DEFINE_PARAM(Nonterminal paramDef, Quaternion funcDefQuater) {
         assert paramDef.isType(_FUNCTION_DEFINE_PARAM_);
         Token ident = (Token) paramDef.child(1);
         Symbol.Var param = getVar(ident);
@@ -238,17 +243,11 @@ public class Generator {
         paramReg.isParam = true;
         if (param.isArray()) {
             // BType Ident '[' ']' '[' ConstExp ']'
-            if (param.dimension == 1) {
-                newQuater(OperatorType.PARAM, paramReg, null, null, null);
-            }
-            else if (param.dimension == 2) {
+            if (param.dimension == 2)
                 param.sizeOfDim1 = (InstNumber) EXPRESSION((Nonterminal) paramDef.child(5));
-                newQuater(OperatorType.PARAM, paramReg, null, null, null);
-            }
+            funcDefQuater.list.add(paramReg);
         }
-        else {
-            newQuater(OperatorType.PARAM, paramReg, null, null, null);
-        }
+        else funcDefQuater.list.add(paramReg);
     }
 
     private void BLOCK(TreeNode _p) {

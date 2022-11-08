@@ -13,19 +13,21 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Map;
 
 public class MipsCoder {
     private final InterCode inter;
     private final NodeList<Mips> mipsList = new NodeList<>();
-    private AllocationInfo allocInfo;
+    private Map<String, FunctionInfo> funcInfoMap;
+    private static final int A0 = 4;
 
     public MipsCoder(InterCode inter) {
         this.inter = inter;
     }
 
     public void generateMips() {
-        this.allocInfo = Allocator.alloc(inter);
-//        this.allocInfo.printAllocInfo();
+        this.funcInfoMap = Allocator.alloc(inter);
+        funcInfoMap.values().forEach(System.out::println);
         generate();
         MipsOptimizer.optimize(mipsList);
     }
@@ -158,6 +160,35 @@ public class MipsCoder {
                 case FUNC:
                     addMips("jr $ra");
                     addMips("func_%s:", quater.label.name);
+                    for (int i = 0; i < quater.list.size(); i++) {
+                        VirtualReg param = (VirtualReg) quater.list.get(i);
+                        // 寄存器传参
+                        if (i < 4) {
+                            // 目标参数在寄存器上
+                            if (param.getRealReg(quater.id) >= 0) {
+                                addMips("move %s, %s",
+                                        getRegName(param.getRealReg(quater.id)),
+                                        getRegName(A0 + i));
+                            }
+                            // 目标参数在栈上
+                            else {
+                                assert param.stackOffset >= 0;
+                                addMips("sw %s, %d($sp)", getRegName(A0 + i), param.stackOffset);
+                            }
+                        }
+                        // 栈传参
+                        else {
+                            int stackOffset = (i - 4) * 4;
+                            if (param.getRealReg(quater.id) >= 0) {
+                                addMips("lw %s, %d($sp)", getRegName(A0 + i), stackOffset);
+                            }
+                            else { // 概率很小，可以优化但是不做了
+                                assert param.stackOffset >= 0;
+                                addMips("lw $t8, %d($sp)", stackOffset);
+                                addMips("sw $t8, %d($sp)", param.stackOffset);
+                            }
+                        }
+                    }
                     break;
                 case RETURN:
                     addMips("jr $ra");
@@ -171,61 +202,68 @@ public class MipsCoder {
                 case GET_RETURN:
                     addRegMips("move @t, $v0", quater);
                     break;
-                case PARAM:
-                    // 什么都不用做，因为参数已经由调用者放到了记录好的位置
-                    break;
                 // 对于函数的调用者：
-                // 1. 依照当前 $sp 和目标函数参数的 offset，减去一整个目标函数的调用栈大小，存放目标函数需要的参数
-                // 2. 存放当前上下文的 $ra 到 0($sp) 位置
-                // 3. 按照目标函数的调用栈大小，向小地址移动 $sp
-                // 4. jal
-                // 5. 按照目标函数的调用栈大小，恢复 $sp
-                // 6. 恢复 $ra
+                // 1. 存放目标函数需要的参数
+                // 2. 存放当前 $ra 到 0($sp) 位置
+                // 3. 对当前活跃的寄存器保存现场，位置在 $sp 的上方，从 -4($sp) 开始
+                // 4. 按照目标函数的调用栈大小，向小地址移动 $sp
+                // 5. jal
+                // 6. 按照目标函数的调用栈大小，恢复 $sp
+                // 7. 恢复 $ra 和保存的寄存器
                 case CALL: {
                     String funcName = quater.label.name;
-                    int paramCount = allocInfo.getFuncParamCount(funcName);
-                    for (int i = 0; i < paramCount; i++) {
-                        assert quater.list != null;
-                        VirtualReg paramDef = allocInfo.getFuncParam(funcName, i); // 形参（保留在栈上还是寄存器中）
-                        Operand paramCall = quater.list.get(i); // 实参（是 vreg 还是立即数）
+                    // 总栈帧大小 frameSize + saveRegSize
+                    int frameSize = funcInfoMap.get(funcName).frameSize;
+                    int saveRegSize = quater.activeRegList == null ? 0 : quater.activeRegList.size() * 4;
 
-                        // 建立 实参 -> 形参 的传递
-                        int paramDefRegId = paramDef.regRangeList == null ? -1 : paramDef.regRangeList.get(0).realReg;
-                        if (paramDefRegId >= 0) {
-                            if (paramCall instanceof InstNumber) {
-                                addMips("li %s, %d", getRegName(paramDefRegId), ((InstNumber) paramCall).number);
-                            }
-                            else if (paramCall instanceof VirtualReg) {
-                                String paramCallReg = loadVregToReg((VirtualReg) paramCall, quater.id, "$t8");
-                                addMips("move %s, %s", getRegName(paramDefRegId), paramCallReg);
+                    // 前 4 个参数放在 $a0 ~ $a3 中，之后的参数放在栈上
+                    for (int i = 0; i < quater.list.size(); i++) {
+                        Operand param = quater.list.get(i); // 实参（是 vreg 还是立即数）
+                        if (i < 4) {
+                            int targetRegId = A0 + i;
+                            if (param instanceof InstNumber)
+                                addMips("li %s, %d", getRegName(targetRegId), ((InstNumber) param).number);
+                            else {
+                                String paramReg = loadVregToReg((VirtualReg) param, quater.id, "$t8");
+                                addMips("move %s, %s", getRegName(targetRegId), paramReg);
                             }
                         }
                         else {
-                            int paramDefOffset = paramDef.stackOffset - allocInfo.getFuncSize(funcName);
-                            if (paramCall instanceof InstNumber) {
-                                addMips("li $t8, %d", ((InstNumber) paramCall).number);
-                                addMips("sw $t8, %d($sp)", paramDefOffset);
+                            int targetOffset = (i - 4) * 4 - frameSize - saveRegSize;
+                            if (param instanceof InstNumber) {
+                                addMips("li $t8, %d", ((InstNumber) param).number);
+                                addMips("sw $t8, %d($sp)", targetOffset);
                             }
-                            else if (paramCall instanceof VirtualReg) {
-                                String paramCallReg = loadVregToReg((VirtualReg) paramCall, quater.id, "$t8");
-                                addMips("sw %s, %d($sp)", paramCallReg, paramDefOffset);
+                            else {
+                                String paramReg = loadVregToReg((VirtualReg) param, quater.id, "$t8");
+                                addMips("sw %s, %d($sp)", paramReg, targetOffset);
                             }
                         }
                     }
-                    if (funcName.equals("main")) {
-                        addMips("add $sp, $sp, -%d", allocInfo.getFuncSize(funcName));
-                        addMips("jal func_main");
+                    addMips("sw $ra, 0($sp)");
+                    if (quater.activeRegList != null) {
+                        int offset = -4;
+                        for (Integer reg : quater.activeRegList) {
+                            addMips("sw %s, %d($sp)", getRegName(reg), offset);
+                            offset -= 4;
+                        }
                     }
-                    else {
-                        addMips("sw $ra, 0($sp)");
-                        addMips("add $sp, $sp, -%d", allocInfo.getFuncSize(funcName));
-                        addMips("jal func_%s", funcName);
-                        addMips("add $sp, $sp, %d", allocInfo.getFuncSize(funcName));
-                        addMips("lw $ra, 0($sp)");
+                    addMips("add $sp, $sp, -%d", frameSize + saveRegSize);
+                    addMips("jal func_%s", funcName);
+                    addMips("add $sp, $sp, %d", frameSize + saveRegSize);
+                    if (quater.activeRegList != null) {
+                        int offset = -4;
+                        for (Integer reg : quater.activeRegList) {
+                            addMips("lw %s, %d($sp)", getRegName(reg), offset);
+                            offset -= 4;
+                        }
                     }
+                    addMips("lw $ra, 0($sp)");
                     break;
                 }
-                case EXIT:
+                case ENTER_MAIN:
+                    addMips("add $sp, $sp, -%d", funcInfoMap.get("main").frameSize);
+                    addMips("jal func_main");
                     addMips("li $v0, 10");
                     addMips("syscall");
                     break;
@@ -444,32 +482,37 @@ public class MipsCoder {
                     addRegMips("move @t, $v0", quater);
                     break;
                 case PRINT_STR:
-                    // todo: 可以优化掉保存 a0 的步骤
-                    addMips("move $t9, $a0");
+                    if (quater.activeRegList != null && quater.activeRegList.contains(A0))
+                        addMips("move $t9, $a0");
                     addMips("la $a0, %s", quater.label);
                     addMips("li $v0, 4");
                     addMips("syscall");
-                    addMips("move $a0, $t9");
+                    if (quater.activeRegList != null && quater.activeRegList.contains(A0))
+                        addMips("move $a0, $t9");
                     break;
                 case PRINT_CHAR:
-                    addMips("move $t9, $a0");
+                    if (quater.activeRegList != null && quater.activeRegList.contains(A0))
+                        addMips("move $t9, $a0");
                     if (quater.x1 instanceof VirtualReg)
                         addRegMips("move $a0, @rx1", quater);
                     else
                         addRegMips("li $a0, @x1", quater);
                     addMips("li $v0, 11");
                     addMips("syscall");
-                    addMips("move $a0, $t9");
+                    if (quater.activeRegList != null && quater.activeRegList.contains(A0))
+                        addMips("move $a0, $t9");
                     break;
                 case PRINT_INT:
-                    addMips("move $t9, $a0");
+                    if (quater.activeRegList != null && quater.activeRegList.contains(A0))
+                        addMips("move $t9, $a0");
                     if (quater.x1 instanceof VirtualReg)
                         addRegMips("move $a0, @rx1", quater);
                     else
                         addRegMips("li $a0, @x1", quater);
                     addMips("li $v0, 1");
                     addMips("syscall");
-                    addMips("move $a0, $t9");
+                    if (quater.activeRegList != null && quater.activeRegList.contains(A0))
+                        addMips("move $a0, $t9");
                     break;
             }
         });

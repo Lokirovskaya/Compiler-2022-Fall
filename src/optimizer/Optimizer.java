@@ -17,7 +17,7 @@ public class Optimizer {
         MergePrint.run(inter);
         ClearLabel.run(inter);
 
-        RegAlloc.run(inter);
+//        RegAlloc.run(inter);
     }
 
 }

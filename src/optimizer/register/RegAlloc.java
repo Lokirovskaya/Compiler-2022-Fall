@@ -2,10 +2,14 @@ package optimizer.register;
 
 import intercode.InterCode;
 import intercode.Operand.VirtualReg;
-import optimizer.block.*;
+import optimizer.block.Block;
+import optimizer.block.FuncBlocks;
+import optimizer.block.SplitBlock;
 import util.Wrap;
 
 import java.util.*;
+
+import static intercode.Quaternion.OperatorType.*;
 
 public class RegAlloc {
     public static void run(InterCode inter) {
@@ -31,75 +35,68 @@ public class RegAlloc {
 
             RegPool pool = new RegPool();
             for (LiveRange curRange : unhandled) {
-                // 寻找 curRange.start 时已经死去的 range，回收它的寄存器，将其移出 active，进入 result
+                // 寻找 curRange.start 时已经死去的 range（可以取等号），回收它的寄存器，将其移出 active，加入 result
                 active.removeIf(range -> {
-                    if (range.end < curRange.start) {
+                    if (range.end <= curRange.start) {
                         pool.free(range.realReg);
                         allocResult.add(range);
                     }
-                    return range.end < curRange.start;
+                    return range.end <= curRange.start;
                 });
 
-                // 参数的分配：$a0 ~ $a3
-                if (curRange.vreg.isParam) {
-                    Integer reg = pool.getParam();
-                    if (reg != null) {
-                        curRange.realReg = reg;
-                        active.add(curRange);
-                    }
-                    else {
-                        // 溢出使用次数最少的参数
-                        LiveRange rangeToBeSpill = active.stream()
-                                .filter(r -> r.vreg.isParam)
-                                .min(Comparator.comparingInt(r -> r.usePointList.size()))
-                                .orElse(null);
-                        assert rangeToBeSpill != null;
-                        curRange.realReg = rangeToBeSpill.realReg;
-                        active.add(curRange);
-                        active.remove(rangeToBeSpill);
-                    }
+                Integer reg = pool.get();
+                if (reg != null) {
+                    curRange.realReg = reg;
+                    active.add(curRange);
                 }
-                // 其它变量
                 else {
-                    Integer reg = pool.get();
-                    if (reg != null) {
-                        curRange.realReg = reg;
-                        active.add(curRange);
+                    // 对所有的 active，以及自身，计算溢出权重
+                    int selfSpillWeight;
+                    int minActiveSpillWeight = Integer.MAX_VALUE;
+                    LiveRange minActiveSpillRange = null;
+                    // 溢出权重 = sum (curRange.start 之后的使用次数 * k)，todo: 循环中 k 取 3
+                    selfSpillWeight = curRange.usePointList.size();
+                    for (LiveRange r : active) {
+                        int w = (int) r.usePointList.stream()
+                                .filter(use -> use >= curRange.start)
+                                .count();
+                        if (w < minActiveSpillWeight) {
+                            minActiveSpillWeight = w;
+                            minActiveSpillRange = r;
+                        }
                     }
-                    else {
-                        // 对所有的 active，以及自身，计算溢出权重
-                        int selfSpillWeight;
-                        int minActiveSpillWeight = Integer.MAX_VALUE;
-                        LiveRange minActiveSpillRange = null;
-                        // 溢出权重 = sum (curRange.start 之后的使用次数 * k)，todo: 循环中 k 取 3
-                        selfSpillWeight = curRange.usePointList.size();
-                        for (LiveRange r : active) {
-                            int w = (int) r.usePointList.stream()
-                                    .filter(use -> use >= curRange.start)
-                                    .count();
-                            if (w < minActiveSpillWeight) {
-                                minActiveSpillWeight = w;
-                                minActiveSpillRange = r;
-                            }
-                        }
-                        // 溢出权重最小的 reg。如果 self 权重最小，什么都不做
-                        if (selfSpillWeight > minActiveSpillWeight) {
-                            curRange.realReg = minActiveSpillRange.realReg;
-                            active.add(curRange);
-                            active.remove(minActiveSpillRange);
-                        }
+                    // 溢出权重最小的 reg。如果 self 权重最小，什么都不做
+                    if (selfSpillWeight > minActiveSpillWeight) {
+                        curRange.realReg = minActiveSpillRange.realReg;
+                        active.add(curRange);
+                        active.remove(minActiveSpillRange);
                     }
                 }
+
             }
             allocResult.addAll(active);
 
+            // 填写 VirtualReg.regRangeList 字段
             for (LiveRange range : allocResult) {
                 if (range.vreg.regRangeList == null)
                     range.vreg.regRangeList = new ArrayList<>();
                 range.vreg.regRangeList.add(range);
             }
+            // 填写 Quaternion.activeRegList 字段
+            for (Block block : funcBlocks.blockList) {
+                block.blockInter.forEachItem(quater -> {
+                    if (quater.op == CALL || quater.op == PRINT_STR || quater.op == PRINT_INT || quater.op == PRINT_CHAR) {
+                        quater.activeRegList = new HashSet<>();
+                        for (LiveRange range : allocResult) {
+                            if (range.realReg >= 0 && range.start <= quater.id && quater.id <= range.end) {
+                                quater.activeRegList.add(range.realReg);
+                            }
+                        }
+                    }
+                });
+            }
             // 输出分配表
-            System.out.println(allocResult);
+//            System.out.println(allocResult);
         }
     }
 
@@ -110,23 +107,15 @@ public class RegAlloc {
                 3, 30 // v1, fp
         ));
 
-        private final Deque<Integer> paramRegPool =
-                new ArrayDeque<>(Arrays.asList(4, 5, 6, 7)); // a0-a3
-
         // 若返回 null，表示池已空
         Integer get() {
             return regPool.pollFirst();
         }
 
-        Integer getParam() {
-            return paramRegPool.pollFirst();
-        }
-
         // 放回一个寄存器
         void free(int reg) {
             assert reg > 0;
-            if (4 <= reg && reg <= 7) paramRegPool.addFirst(reg);
-            else regPool.addFirst(reg);
+            regPool.addFirst(reg);
         }
     }
 }
