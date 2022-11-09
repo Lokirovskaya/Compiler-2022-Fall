@@ -10,9 +10,8 @@ import java.util.List;
 public class ClearDeadCode {
     static void run(InterCode inter) {
         List<FuncBlocks> funcBlocksList = SplitBlock.split(inter);
-        for (FuncBlocks funcBlocks : funcBlocksList) {
-            runFuncBlocks(funcBlocks.root);
-        }
+        funcBlocksList.forEach(func -> func.blockList.forEach(block -> block.isReachable = false));
+        funcBlocksList.forEach(func -> runFuncBlocks(func.root));
         inter.clear();
         for (FuncBlocks funcBlocks : funcBlocksList) {
             for (Block block : funcBlocks.blockList) {

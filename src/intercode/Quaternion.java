@@ -2,6 +2,7 @@ package intercode;
 
 import intercode.Operand.VirtualReg;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -23,6 +24,38 @@ public class Quaternion {
         this.x1 = x1;
         this.x2 = x2;
         this.label = label;
+    }
+
+    // 当前四元式「定义」的所有 vreg
+    public List<VirtualReg> getDefVregList() {
+        List<VirtualReg> defList = new ArrayList<>(0);
+        if (op != SET_ARRAY && target != null) defList.add(target);
+        if (op == FUNC) {
+            assert list != null;
+            for (Operand o : list) {
+                assert o instanceof VirtualReg;
+                defList.add((VirtualReg) o);
+            }
+        }
+        return defList;
+    }
+
+    // 当前四元式「使用」的所有 vreg
+    public List<VirtualReg> getUseVregList() {
+        List<VirtualReg> useList = new ArrayList<>(0);
+        if (op == SET_ARRAY) {
+            assert target != null;
+            useList.add(target);
+        }
+        if (x1 instanceof VirtualReg) useList.add((VirtualReg) x1);
+        if (x2 instanceof VirtualReg) useList.add((VirtualReg) x2);
+        if (op != FUNC && list != null) {
+            for (Operand o : list) {
+                if (o instanceof VirtualReg)
+                    useList.add((VirtualReg) o);
+            }
+        }
+        return useList;
     }
 
     public enum OperatorType {
@@ -78,7 +111,8 @@ public class Quaternion {
         else if (op == ENTER_MAIN) return "enter_main";
         else if (op == CALL) return String.format("call %s %s", label, operandListToString(list));
         else if (op == ALLOC) return String.format("%s = alloc %s %s", target, x1, operandListToString(list));
-        else if (op == GLOBAL_ALLOC) return String.format("%s = global_alloc %s %s", label, x1, operandListToString(list));
+        else if (op == GLOBAL_ALLOC)
+            return String.format("%s = global_alloc %s %s", label, x1, operandListToString(list));
         else return null;
     }
 

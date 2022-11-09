@@ -1,12 +1,10 @@
 package mips;
 
 import intercode.InterCode;
-import intercode.Operand;
 import intercode.Operand.InstNumber;
 import intercode.Operand.VirtualReg;
 import util.Wrap;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,17 +18,18 @@ class Allocator {
     static Map<String, FunctionInfo> alloc(InterCode inter) {
         Map<String, FunctionInfo> funcInfoMap = new HashMap<>();
 
-        Wrap<FunctionInfo> curFuncInfo = new Wrap<>(null);
+        Wrap<FunctionInfo> curFuncInfo = new Wrap<>(new FunctionInfo());
+        curFuncInfo.get().name = ".global";
         Wrap<Integer> curOffset = new Wrap<>(0); // 0($sp) 的位置保留给 $ra
         Wrap<Integer> curGlobalOffset = new Wrap<>(-4); // $gp 空间，不需要留 $ra
         inter.forEachItem(quater -> {
             // 函数
             // 遇到下一个 func，结算当前 func
             if (quater.op == FUNC) {
-                if (curFuncInfo.get() != null) {
-                    curFuncInfo.get().frameSize = curOffset.get() + 4;
-                    funcInfoMap.put(curFuncInfo.get().name, curFuncInfo.get());
-                }
+                // 结算旧函数
+                curFuncInfo.get().frameSize = curOffset.get() + 4;
+                funcInfoMap.put(curFuncInfo.get().name, curFuncInfo.get());
+                // 新函数
                 curFuncInfo.set(new FunctionInfo());
                 curFuncInfo.get().name = quater.label.name;
                 // 预留参数的位置
@@ -40,30 +39,25 @@ class Allocator {
 
             // 变量
             // 对任意四元式中 vreg 的分配，跳过立即数和已分配寄存器的 vreg
-            List<Operand> allOperandList = new ArrayList<>();
-            allOperandList.add(quater.target);
-            allOperandList.add(quater.x1);
-            allOperandList.add(quater.x2);
-            if (quater.list != null) allOperandList.addAll(quater.list);
-            for (Operand _o : allOperandList) {
-                if (!(_o instanceof VirtualReg)) continue;
-                VirtualReg o = (VirtualReg) _o;
+            List<VirtualReg> allVreg = quater.getUseVregList();
+            allVreg.addAll(quater.getDefVregList());
+            for (VirtualReg vreg : allVreg) {
                 // 如果一个 vreg 存在未分配寄存器的使用，就为它分配栈空间
-                if (o.getRealReg(quater.id) < 0) {
-                    if (o.stackOffset < 0) {
-                        if (o.isGlobal) {
+                if (vreg.getRealReg(quater.id) < 0) {
+                    if (vreg.stackOffset < 0) {
+                        if (vreg.isGlobal) {
                             curGlobalOffset.set(curGlobalOffset.get() + 4);
-                            o.stackOffset = curGlobalOffset.get();
+                            vreg.stackOffset = curGlobalOffset.get();
                         }
                         else {
                             curOffset.set(curOffset.get() + 4);
-                            o.stackOffset = curOffset.get();
+                            vreg.stackOffset = curOffset.get();
                         }
                     }
                 }
                 // 否则，记录寄存器到函数的寄存器表中
                 else {
-                    curFuncInfo.get().regUseList.add(o.getRealReg(quater.id));
+                    curFuncInfo.get().regUseList.add(vreg.getRealReg(quater.id));
                 }
             }
             // 分配数组空间，位置紧邻数组地址
@@ -76,7 +70,7 @@ class Allocator {
                     curGlobalOffset.set(curGlobalOffset.get() + arraySize);
                 }
                 else {
-                    curGlobalOffset.set(curGlobalOffset.get() + 4);
+                    curOffset.set(curOffset.get() + 4);
                     quater.target.stackOffset = curOffset.get();
                     curOffset.set(curOffset.get() + arraySize);
                 }
@@ -88,6 +82,7 @@ class Allocator {
             else if (quater.op == FUNC)
                 curFuncInfo.get().paramList = quater.list.stream().map(o -> (VirtualReg) o).collect(Collectors.toList());
         });
+        curFuncInfo.get().frameSize = curOffset.get() + 4;
         funcInfoMap.put(curFuncInfo.get().name, curFuncInfo.get());
         return funcInfoMap;
     }
