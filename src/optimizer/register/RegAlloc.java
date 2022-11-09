@@ -1,17 +1,20 @@
 package optimizer.register;
 
 import intercode.InterCode;
-import intercode.Operand.VirtualReg;
 import optimizer.block.Block;
 import optimizer.block.FuncBlocks;
 import optimizer.block.SplitBlock;
 import util.Wrap;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static intercode.Quaternion.OperatorType.*;
 
+// 寄存器分配，顺便删除无用赋值
 public class RegAlloc {
+    private static final boolean DEBUG = true;
+
     public static void run(InterCode inter) {
         // 为中间代码编号
         Wrap<Integer> id = new Wrap<>(1);
@@ -21,83 +24,92 @@ public class RegAlloc {
         });
 
         for (FuncBlocks funcBlocks : SplitBlock.split(inter)) {
-            Map<VirtualReg, List<LiveRange>> vregRangesOfVregMap = LivenessAnalysis.run(funcBlocks);
-            // 已分配寄存器的活跃区间集合，不需要有序
-            Set<LiveRange> active = new HashSet<>();
-            // 未活跃的区间集合，需要按开始时间升序
-            List<LiveRange> unhandled = new ArrayList<>();
-            // 分配的结果
-            List<LiveRange> allocResult = new ArrayList<>();
+            List<Interval> intervalList = LivenessAnalysis.run(funcBlocks);
+            if (DEBUG) {
+                System.out.println("\n========================");
+                funcBlocks.printFuncBlocks();
+            }
 
-            // 初始化 unhandled
-            vregRangesOfVregMap.values().forEach(rangesOfVreg -> unhandled.addAll(rangesOfVreg));
-            unhandled.sort(Comparator.comparingInt(range -> range.start));
+            // 已分配寄存器的活跃区间集合，不需要有序
+            Set<Interval> active = new HashSet<>();
+            // 未活跃的区间集合，需要按开始时间升序遍历
+            List<Interval> unhandled = intervalList.stream()
+                    .filter(interval -> interval.rangeList.size() > 0)
+                    .sorted(Comparator.comparingInt(interval -> interval.start()))
+                    .collect(Collectors.toList());
+            // 分配结果的集合
+            List<Interval> result = new ArrayList<>();
 
             RegPool pool = new RegPool();
-            for (LiveRange curRange : unhandled) {
-                // 寻找 curRange.start 时已经死去的 range（可以取等号），回收它的寄存器，将其移出 active，加入 result
-                active.removeIf(range -> {
-                    if (range.end <= curRange.start) {
-                        pool.free(range.realReg);
-                        allocResult.add(range);
+            for (Interval curInterval : unhandled) {
+                // 不要分配全局变量
+                if (curInterval.vreg.isGlobal) continue;
+                // 寻找 curInterval.start 时已经死去的 range（可以取等号），回收它的寄存器，将其移出 active，加入 result
+                active.removeIf(interval -> {
+                    if (interval.end() <= curInterval.start()) {
+                        pool.free(interval.realReg);
+                        result.add(interval);
                     }
-                    return range.end <= curRange.start;
+                    return interval.end() <= curInterval.start();
                 });
 
                 Integer reg = pool.get();
                 if (reg != null) {
-                    curRange.realReg = reg;
-                    active.add(curRange);
+                    curInterval.realReg = reg;
+                    active.add(curInterval);
                 }
                 else {
                     // 对所有的 active，以及自身，计算溢出权重
                     int selfSpillWeight;
                     int minActiveSpillWeight = Integer.MAX_VALUE;
-                    LiveRange minActiveSpillRange = null;
-                    // 溢出权重 = sum (curRange.start 之后的使用次数 * k)，todo: 循环中 k 取 3
-                    selfSpillWeight = curRange.usePointList.size();
-                    for (LiveRange r : active) {
-                        int w = (int) r.usePointList.stream()
-                                .filter(use -> use >= curRange.start)
+                    Interval intervalToSpill = null;
+                    // 溢出权重 = sum (curInterval.start 之后的使用次数 * k)，todo: 循环中 k 取 3
+                    selfSpillWeight = curInterval.usePointList.size();
+                    for (Interval interval : active) {
+                        int w = (int) interval.usePointList.stream()
+                                .filter(use -> use >= curInterval.start())
                                 .count();
                         if (w < minActiveSpillWeight) {
                             minActiveSpillWeight = w;
-                            minActiveSpillRange = r;
+                            intervalToSpill = interval;
                         }
                     }
                     // 溢出权重最小的 reg。如果 self 权重最小，什么都不做
-                    if (selfSpillWeight > minActiveSpillWeight) {
-                        curRange.realReg = minActiveSpillRange.realReg;
-                        active.add(curRange);
-                        active.remove(minActiveSpillRange);
+                    if (minActiveSpillWeight < selfSpillWeight) {
+                        curInterval.realReg = intervalToSpill.realReg;
+                        intervalToSpill.realReg = -1;
+                        active.add(curInterval);
+                        active.remove(intervalToSpill);
                     }
                 }
-
             }
-            allocResult.addAll(active);
+            result.addAll(active);
 
-            // 填写 VirtualReg.regRangeList 字段
-            for (LiveRange range : allocResult) {
-                if (range.vreg.regRangeList == null)
-                    range.vreg.regRangeList = new ArrayList<>();
-                range.vreg.regRangeList.add(range);
-            }
+            // 填写 VirtualReg.realReg 字段
+            result.forEach(interval -> interval.vreg.realReg = interval.realReg);
             // 填写 Quaternion.activeRegList 字段
             for (Block block : funcBlocks.blockList) {
                 block.blockInter.forEachItem(quater -> {
                     if (quater.op == CALL || quater.op == PRINT_STR || quater.op == PRINT_INT || quater.op == PRINT_CHAR) {
                         quater.activeRegList = new HashSet<>();
-                        for (LiveRange range : allocResult) {
-                            if (range.realReg >= 0 && range.start <= quater.id && quater.id <= range.end) {
-                                quater.activeRegList.add(range.realReg);
+                        for (Interval interval : result) {
+                            if (interval.realReg >= 0 && interval.start() <= quater.id && quater.id <= interval.end()) {
+                                quater.activeRegList.add(interval.realReg);
                             }
                         }
                     }
                 });
             }
-            // 输出分配表
-//            System.out.println(allocResult);
+            if (DEBUG) {
+                System.out.println("reg alloc result:");
+                System.out.println(result);
+            }
         }
+
+        // 删除无用赋值
+        inter.forEachNode(p -> {
+            if (p.get().isUselessAssign) p.delete();
+        });
     }
 
     private static class RegPool {

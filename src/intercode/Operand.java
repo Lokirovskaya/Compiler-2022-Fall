@@ -1,9 +1,5 @@
 package intercode;
 
-import optimizer.register.LiveRange;
-
-import java.util.List;
-
 public abstract class Operand {
     public static class VirtualReg extends Operand {
         public int regID;
@@ -13,23 +9,11 @@ public abstract class Operand {
         public boolean isGlobal;
         public String name;
         // 储存管理相关
-        public List<LiveRange> regRangeList;
+        public int realReg = -1;
         public int stackOffset = -1; // -1 表示未在栈上分配
 
         public VirtualReg(int regID) {
             this.regID = regID;
-        }
-
-        // 获取 this 在某一行的寄存器，未分配返回 -1
-        public int getRealReg(int lineNumber) {
-            if (lineNumber <= 0) return -1;
-            if (regRangeList == null) return -1;
-            for (LiveRange range : regRangeList) {
-                if (range.start <= lineNumber && lineNumber <= range.end) {
-                    return range.realReg;
-                }
-            }
-            return -1;
         }
 
         @Override

@@ -39,11 +39,9 @@ class Allocator {
 
             // 变量
             // 对任意四元式中 vreg 的分配，跳过立即数和已分配寄存器的 vreg
-            List<VirtualReg> allVreg = quater.getUseVregList();
-            allVreg.addAll(quater.getDefVregList());
-            for (VirtualReg vreg : allVreg) {
-                // 如果一个 vreg 存在未分配寄存器的使用，就为它分配栈空间
-                if (vreg.getRealReg(quater.id) < 0) {
+            for (VirtualReg vreg : quater.getAllVregList()) {
+                // 如果一个 vreg 未分配寄存器，就为它分配栈空间
+                if (vreg.realReg < 0) {
                     if (vreg.stackOffset < 0) {
                         if (vreg.isGlobal) {
                             curGlobalOffset.set(curGlobalOffset.get() + 4);
@@ -57,7 +55,7 @@ class Allocator {
                 }
                 // 否则，记录寄存器到函数的寄存器表中
                 else {
-                    curFuncInfo.get().regUseList.add(vreg.getRealReg(quater.id));
+                    curFuncInfo.get().regUseList.add(vreg.realReg);
                 }
             }
             // 分配数组空间，位置紧邻数组地址

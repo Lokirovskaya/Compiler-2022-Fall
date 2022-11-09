@@ -14,8 +14,10 @@ public class Quaternion {
     public Operand x1, x2;
     public Label label;
     public List<Operand> list;
+
     public int id = -1; // 仅寄存器分配时用
     public Set<Integer> activeRegList; // 当前活跃的寄存器，只对 CALL，PRINT 指令记录
+    public boolean isUselessAssign = false;
 
     // not public
     Quaternion(OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
@@ -51,11 +53,23 @@ public class Quaternion {
         if (x2 instanceof VirtualReg) useList.add((VirtualReg) x2);
         if (op != FUNC && list != null) {
             for (Operand o : list) {
-                if (o instanceof VirtualReg)
-                    useList.add((VirtualReg) o);
+                if (o instanceof VirtualReg) useList.add((VirtualReg) o);
             }
         }
         return useList;
+    }
+
+    public List<VirtualReg> getAllVregList() {
+        List<VirtualReg> vregList = new ArrayList<>(0);
+        if (target != null) vregList.add(target);
+        if (x1 instanceof VirtualReg) vregList.add((VirtualReg) x1);
+        if (x2 instanceof VirtualReg) vregList.add((VirtualReg) x2);
+        if (list != null) {
+            for (Operand o : list) {
+                if (o instanceof VirtualReg) vregList.add((VirtualReg) o);
+            }
+        }
+        return vregList;
     }
 
     public enum OperatorType {

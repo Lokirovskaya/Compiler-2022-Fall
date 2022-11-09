@@ -1,22 +1,28 @@
 package optimizer.register;
 
 import intercode.Operand.VirtualReg;
+import intercode.Quaternion;
 import optimizer.block.Block;
 import optimizer.block.FuncBlocks;
+import util.Pair;
 
 import java.util.*;
+import java.util.function.Function;
 
 // 活跃变量分析，填充 block 的 in, out, use, def 字段
-public class LivenessAnalysis {
-    private static final Map<VirtualReg, List<LiveRange>> vregRangesOfVregMap = new HashMap<>();
-
-    public static Map<VirtualReg, List<LiveRange>> run(FuncBlocks funcBlocks) {
-        vregRangesOfVregMap.clear();
-        // hashMap = {
-        //     vreg1: [range11, range12, ...],
-        //     vreg2: [range21, range22, ...],
-        //     ...
-        // }
+class LivenessAnalysis {
+    public static List<Interval> run(FuncBlocks funcBlocks) {
+        Map<VirtualReg, Interval> vregIntervalMap = new HashMap<>();
+        Function<VirtualReg, Interval> getInterval = vreg -> {
+            if (vregIntervalMap.containsKey(vreg))
+                return vregIntervalMap.get(vreg);
+            else {
+                Interval interval = new Interval();
+                interval.vreg = vreg;
+                vregIntervalMap.put(vreg, interval);
+                return interval;
+            }
+        };
 
         // 计算所有 block 的 use 和 def
         for (Block block : funcBlocks.blockList) {
@@ -67,63 +73,33 @@ public class LivenessAnalysis {
             int blockEnd = block.blockInter.getLast().id;
 
             for (VirtualReg outVreg : block.out) {
-                addRange(new LiveRange(outVreg, blockStart, blockEnd));
+                getInterval.apply(outVreg).addRange(blockStart, blockEnd);
             }
 
             block.blockInter.forEachItemReverse(quater -> {
                 // def
                 for (VirtualReg defVreg : quater.getDefVregList()) {
-                    List<LiveRange> ranges = vregRangesOfVregMap.get(defVreg);
-                    if (ranges != null)
-                        ranges.get(0).start = quater.id;
+                    if (!defVreg.isGlobal) {
+                        List<Pair<Integer, Integer>> ranges = getInterval.apply(defVreg).rangeList;
+                        if (ranges.size() > 0)
+                            ranges.get(0).first = quater.id;
+                        else {
+                            if (quater.op != Quaternion.OperatorType.FUNC)
+                                quater.isUselessAssign = true;
+                        }
+                    }
                 }
-
                 // use
-                for (VirtualReg useVreg: quater.getUseVregList()) {
+                for (VirtualReg useVreg : quater.getUseVregList()) {
                     if (!useVreg.isGlobal) {
-                        addRange(new LiveRange(useVreg, blockStart, quater.id));
-                        addUsePoint(useVreg, quater.id);
+                        getInterval.apply(useVreg).addRange(blockStart, quater.id);
+                        getInterval.apply(useVreg).addUsePoint(quater.id);
                     }
                 }
             });
         }
-        vregRangesOfVregMap.values().forEach(rangesOfVreg -> rangesOfVreg.forEach(range -> range.usePointList.sort(Comparator.comparingInt(x -> x))));
-        return vregRangesOfVregMap;
-    }
 
-    private static void addRange(LiveRange range) {
-        if (!vregRangesOfVregMap.containsKey(range.vreg))
-            vregRangesOfVregMap.put(range.vreg, new ArrayList<>());
-        vregRangesOfVregMap.get(range.vreg).add(range);
-        mergeLiveRanges(vregRangesOfVregMap.get(range.vreg));
-    }
-
-    private static void addUsePoint(VirtualReg vreg, int usePoint) {
-        vregRangesOfVregMap.get(vreg).get(0).usePointList.add(usePoint);
-    }
-
-    private static void mergeLiveRanges(List<LiveRange> rangeList) {
-        rangeList.sort(Comparator.comparingInt(x -> x.start));
-        int nowIdx = 0, nextIdx = 1;
-        while (nextIdx < rangeList.size()) {
-            LiveRange now = rangeList.get(nowIdx), next = rangeList.get(nextIdx);
-            if (next.start <= now.end + 1) {
-                now.end = Math.max(now.end, next.end);
-                next.start = -1; // to be deleted
-                nextIdx++;
-                continue;
-            }
-            nowIdx = nextIdx;
-            nextIdx++;
-        }
-        // rangeList[0] 一定不会被移除
-        assert rangeList.get(0).start != -1;
-        for (int i = 1; i < rangeList.size(); i++) {
-            if (rangeList.get(i).start == -1) {
-                rangeList.get(i - 1).usePointList.addAll(rangeList.get(i).usePointList);
-                rangeList.remove(i);
-                i--;
-            }
-        }
+        vregIntervalMap.values().forEach(interval -> interval.usePointList.sort(Comparator.comparingInt(x -> x)));
+        return new ArrayList<>(vregIntervalMap.values());
     }
 }

@@ -50,8 +50,8 @@ public class MipsCoder {
     }
 
     // 获取 vreg 对应的 reg；如果 vreg 存放在栈上，就从栈上加载到 defaultReg 中
-    private String loadVregToReg(VirtualReg vreg, int lineNumber, String defaultReg) {
-        if (vreg.getRealReg(lineNumber) >= 0) return getRegName(vreg.getRealReg(lineNumber));
+    private String loadVregToReg(VirtualReg vreg, String defaultReg) {
+        if (vreg.realReg >= 0) return getRegName(vreg.realReg);
         if (vreg.isGlobal)
             addMips("lw %s, %d($gp)", defaultReg, vreg.stackOffset);
         else
@@ -65,20 +65,19 @@ public class MipsCoder {
     private void addRegMips(String format, Quaternion quater) {
         String tReg, x1RegInst, x2RegInst, x1Reg, x2Reg, label;
         tReg = x1RegInst = x2RegInst = x1Reg = x2Reg = label = "";
-        int lineNumber = quater.id;
         if (format.contains("@t")) {
-            tReg = (quater.target.getRealReg(lineNumber) >= 0) ?
-                    getRegName(quater.target.getRealReg(lineNumber)) : "$t8";
+            tReg = (quater.target.realReg >= 0) ?
+                    getRegName(quater.target.realReg) : "$t8";
         }
         if (format.contains("@x1")) {
             if (quater.x1 instanceof VirtualReg)
-                x1RegInst = loadVregToReg((VirtualReg) quater.x1, lineNumber, "$t8");
+                x1RegInst = loadVregToReg((VirtualReg) quater.x1, "$t8");
             else
                 x1RegInst = String.valueOf(((InstNumber) quater.x1).number);
         }
         if (format.contains("@x2")) {
             if (quater.x2 instanceof VirtualReg)
-                x2RegInst = loadVregToReg((VirtualReg) quater.x2, lineNumber, "$t9");
+                x2RegInst = loadVregToReg((VirtualReg) quater.x2, "$t9");
             else
                 x2RegInst = String.valueOf(((InstNumber) quater.x2).number);
         }
@@ -86,7 +85,7 @@ public class MipsCoder {
             if (isZero(quater.x1))
                 x1Reg = "$zero";
             else if (quater.x1 instanceof VirtualReg)
-                x1Reg = loadVregToReg((VirtualReg) quater.x1, lineNumber, "$t8");
+                x1Reg = loadVregToReg((VirtualReg) quater.x1, "$t8");
             else {
                 addMips("li $t8, %d", ((InstNumber) quater.x1).number);
                 x1Reg = "$t8";
@@ -96,7 +95,7 @@ public class MipsCoder {
             if (isZero(quater.x2))
                 x2Reg = "$zero";
             else if (quater.x2 instanceof VirtualReg)
-                x2Reg = loadVregToReg((VirtualReg) quater.x2, lineNumber, "$t9");
+                x2Reg = loadVregToReg((VirtualReg) quater.x2, "$t9");
             else {
                 addMips("li $t9, %d", ((InstNumber) quater.x2).number);
                 x2Reg = "$t9";
@@ -112,7 +111,7 @@ public class MipsCoder {
                 .replace("@rx2", x2Reg)
                 .replace("@label", label));
         if (format.contains("@t")) {
-            if (quater.target.getRealReg(lineNumber) < 0) {
+            if (quater.target.realReg < 0) {
                 if (quater.target.isGlobal)
                     addMips("sw %s, %d($gp)", tReg, quater.target.stackOffset);
                 else
@@ -165,10 +164,8 @@ public class MipsCoder {
                         // 寄存器传参
                         if (i < 4) {
                             // 目标参数在寄存器上
-                            if (param.getRealReg(quater.id) >= 0) {
-                                addMips("move %s, %s",
-                                        getRegName(param.getRealReg(quater.id)),
-                                        getRegName(A0 + i));
+                            if (param.realReg >= 0) {
+                                addMips("move %s, %s", getRegName(param.realReg), getRegName(A0 + i));
                             }
                             // 目标参数在栈上
                             else {
@@ -179,10 +176,10 @@ public class MipsCoder {
                         // 栈传参
                         else {
                             int stackOffset = (i - 4) * 4;
-                            if (param.getRealReg(quater.id) >= 0) {
+                            if (param.realReg >= 0) {
                                 addMips("lw %s, %d($sp)", getRegName(A0 + i), stackOffset);
                             }
-                            else { // 概率很小，可以优化但是不做了
+                            else { // 栈传参且目标参数也在栈上，概率很小，可以优化但是不做了
                                 assert param.stackOffset >= 0;
                                 addMips("lw $t8, %d($sp)", stackOffset);
                                 addMips("sw $t8, %d($sp)", param.stackOffset);
@@ -224,7 +221,7 @@ public class MipsCoder {
                             if (param instanceof InstNumber)
                                 addMips("li %s, %d", getRegName(targetRegId), ((InstNumber) param).number);
                             else {
-                                String paramReg = loadVregToReg((VirtualReg) param, quater.id, "$t8");
+                                String paramReg = loadVregToReg((VirtualReg) param, "$t8");
                                 addMips("move %s, %s", getRegName(targetRegId), paramReg);
                             }
                         }
@@ -235,7 +232,7 @@ public class MipsCoder {
                                 addMips("sw $t8, %d($sp)", targetOffset);
                             }
                             else {
-                                String paramReg = loadVregToReg((VirtualReg) param, quater.id, "$t8");
+                                String paramReg = loadVregToReg((VirtualReg) param, "$t8");
                                 addMips("sw %s, %d($sp)", paramReg, targetOffset);
                             }
                         }
@@ -289,7 +286,7 @@ public class MipsCoder {
                             addMips("sw $t8, %d($sp)", arrayOffset + i * 4);
                         }
                         else {
-                            String initValReg = loadVregToReg((VirtualReg) o, quater.id, "$t8");
+                            String initValReg = loadVregToReg((VirtualReg) o, "$t8");
                             addMips("sw %s, %d($sp)", initValReg, arrayOffset + i * 4);
                         }
                     }
@@ -300,7 +297,7 @@ public class MipsCoder {
                     for (int i = 0; quater.list != null && i < quater.list.size(); i++) {
                         Operand o = quater.list.get(i);
                         if (o instanceof VirtualReg) {
-                            String initValReg = loadVregToReg((VirtualReg) o, quater.id, "$t8");
+                            String initValReg = loadVregToReg((VirtualReg) o, "$t8");
                             addMips("sw %s, %s + %d", initValReg, quater.label, i * 4);
                         }
                     }
@@ -331,13 +328,13 @@ public class MipsCoder {
                 case SET_ARRAY: {
                     // @t[@x1] = @x2，@t 在这里不会被改变，因此不要使用含有 @t 的 addRegMips
                     // 最终形式为 sw valueReg, offsetReg(baseReg)
-                    String baseReg = loadVregToReg(quater.target, quater.id, "$t8");
+                    String baseReg = loadVregToReg(quater.target, "$t8");
                     if (quater.x1 instanceof InstNumber) {
                        int  offset = ((InstNumber) quater.x1).number * 4;
                         addRegMips(String.format("sw @rx2, %d(%s)", offset, baseReg), quater);
                     }
                     else {
-                        String indexReg = loadVregToReg((VirtualReg) quater.x1, quater.id, "$t9");
+                        String indexReg = loadVregToReg((VirtualReg) quater.x1, "$t9");
                         addMips("sll %s, %s, 2", indexReg, indexReg);
                         addMips("add $t8, %s, %s",  baseReg, indexReg);
                         addRegMips("sw @rx2, 0($t8)", quater);
@@ -350,7 +347,7 @@ public class MipsCoder {
                         addRegMips(String.format("sw @rx2, @label + %d", ((InstNumber) quater.x1).number * 4), quater);
                     }
                     else {
-                        String indexReg = loadVregToReg((VirtualReg) quater.x1, quater.id, "$t8");
+                        String indexReg = loadVregToReg((VirtualReg) quater.x1, "$t8");
                         addMips("sll %s, %s, 2", indexReg, indexReg);
                         addRegMips(String.format("sw @rx2, @label(%s)", indexReg), quater);
                     }
