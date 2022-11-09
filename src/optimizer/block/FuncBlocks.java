@@ -18,7 +18,7 @@ public class FuncBlocks {
             if (block.in != null) {
                 System.out.printf("in: %s, out: %s, def: %s, use: %s\n", Arrays.toString(block.in.toArray()), Arrays.toString(block.out.toArray()), Arrays.toString(block.def.toArray()), Arrays.toString(block.use.toArray()));
             }
-            block.blockInter.forEachItem(quater -> System.out.println("  " + quater.toString()));
+            block.blockInter.forEachItem(quater -> System.out.println("  " + quater.id + " " + quater));
         }
         System.out.println();
     }

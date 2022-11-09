@@ -7,7 +7,7 @@ import java.util.List;
 
 public class LiveRange {
     public Operand.VirtualReg vreg;
-    public int start, end; // 左右闭区间
+    public int start, end; // 左闭右开
     public int realReg = -1;
     public List<Integer> usePointList = new ArrayList<>();
 

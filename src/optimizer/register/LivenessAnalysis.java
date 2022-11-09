@@ -1,35 +1,22 @@
 package optimizer.register;
 
-import intercode.Operand;
 import intercode.Operand.VirtualReg;
 import optimizer.block.Block;
 import optimizer.block.FuncBlocks;
 
 import java.util.*;
-import java.util.function.BiConsumer;
-
-import static intercode.Quaternion.OperatorType.SET_ARRAY;
 
 // 活跃变量分析，填充 block 的 in, out, use, def 字段
 public class LivenessAnalysis {
+    private static final Map<VirtualReg, List<LiveRange>> vregRangesOfVregMap = new HashMap<>();
+
     public static Map<VirtualReg, List<LiveRange>> run(FuncBlocks funcBlocks) {
+        vregRangesOfVregMap.clear();
         // hashMap = {
         //     vreg1: [range11, range12, ...],
         //     vreg2: [range21, range22, ...],
         //     ...
         // }
-        Map<VirtualReg, List<LiveRange>> vregRangesOfVregMap = new HashMap<>();
-
-        BiConsumer<VirtualReg, LiveRange> addRange = (vreg, range) -> {
-            if (!vregRangesOfVregMap.containsKey(vreg))
-                vregRangesOfVregMap.put(vreg, new ArrayList<>());
-            vregRangesOfVregMap.get(vreg).add(range);
-        };
-        BiConsumer<VirtualReg, Integer> addUsePoint = (vreg, usePoint) ->
-                vregRangesOfVregMap.get(vreg)
-                        .get(vregRangesOfVregMap.get(vreg).size() - 1)
-                        .usePointList.add(usePoint);
-
 
         // 计算所有 block 的 use 和 def
         for (Block block : funcBlocks.blockList) {
@@ -39,26 +26,18 @@ public class LivenessAnalysis {
             block.out = new HashSet<>();
 
             block.blockInter.forEachItem(quater -> {
-                VirtualReg target = quater.target;
-                Operand x1 = quater.x1, x2 = quater.x2;
                 // use
-                if (x1 instanceof VirtualReg && !block.def.contains(x1) && !((VirtualReg) x1).isGlobal)
-                    block.use.add((VirtualReg) x1);
-                if (x2 instanceof VirtualReg && !block.def.contains(x2) && !((VirtualReg) x2).isGlobal)
-                    block.use.add((VirtualReg) x2);
-                if (quater.op == SET_ARRAY && !block.def.contains(target) && !target.isGlobal)
-                    block.use.add(target);
-                if (quater.list != null) {
-                    for (Operand o : quater.list) {
-                        if (o instanceof VirtualReg && !block.def.contains(o) && !((VirtualReg) o).isGlobal) {
-                            block.use.add((VirtualReg) o);
-                        }
+                for (VirtualReg useVreg : quater.getUseVregList()) {
+                    if (!block.def.contains(useVreg) && !useVreg.isGlobal) {
+                        block.use.add(useVreg);
                     }
                 }
                 // def
-                if (target != null && quater.op != SET_ARRAY && !block.use.contains(target) && !target.isGlobal)
-                    block.def.add(target);
-
+                for (VirtualReg defVreg : quater.getDefVregList()) {
+                    if (!block.use.contains(defVreg) && !defVreg.isGlobal) {
+                        block.def.add(defVreg);
+                    }
+                }
             });
         }
 
@@ -88,48 +67,39 @@ public class LivenessAnalysis {
             int blockEnd = block.blockInter.getLast().id;
 
             for (VirtualReg outVreg : block.out) {
-                addRange.accept(outVreg, new LiveRange(outVreg, blockStart, blockEnd));
+                addRange(new LiveRange(outVreg, blockStart, blockEnd));
             }
 
             block.blockInter.forEachItemReverse(quater -> {
-                VirtualReg target = quater.target;
-                Operand x1 = quater.x1, x2 = quater.x2;
-
                 // def
-                if (target != null && quater.op != SET_ARRAY) {
-                    List<LiveRange> ranges = vregRangesOfVregMap.get(target);
+                for (VirtualReg defVreg : quater.getDefVregList()) {
+                    List<LiveRange> ranges = vregRangesOfVregMap.get(defVreg);
                     if (ranges != null)
-                        ranges.get(ranges.size() - 1).start = quater.id;
-                    else
-                        addRange.accept(target, new LiveRange(target, quater.id, quater.id));
+                        ranges.get(0).start = quater.id;
                 }
 
                 // use
-                if (quater.op == SET_ARRAY && target != null && !target.isGlobal) {
-                    addRange.accept(target, new LiveRange(target, blockStart, quater.id));
-                    addUsePoint.accept(target, quater.id);
-                }
-                if (x1 instanceof VirtualReg && !((VirtualReg) x1).isGlobal) {
-                    addRange.accept((VirtualReg) x1, new LiveRange((VirtualReg) x1, blockStart, quater.id));
-                    addUsePoint.accept((VirtualReg) x1, quater.id);
-                }
-                if (x2 instanceof VirtualReg && !((VirtualReg) x2).isGlobal) {
-                    addRange.accept((VirtualReg) x2, new LiveRange((VirtualReg) x2, blockStart, quater.id));
-                    addUsePoint.accept((VirtualReg) x2, quater.id);
-                }
-                if (quater.list != null) {
-                    for (Operand o : quater.list) {
-                        if (o instanceof VirtualReg && !((VirtualReg) o).isGlobal) {
-                            addRange.accept((VirtualReg) o, new LiveRange((VirtualReg) o, blockStart, quater.id));
-                            addUsePoint.accept((VirtualReg) o, quater.id);
-                        }
+                for (VirtualReg useVreg: quater.getUseVregList()) {
+                    if (!useVreg.isGlobal) {
+                        addRange(new LiveRange(useVreg, blockStart, quater.id));
+                        addUsePoint(useVreg, quater.id);
                     }
                 }
             });
         }
-        vregRangesOfVregMap.values().forEach(rangesOfVreg -> mergeLiveRanges(rangesOfVreg));
         vregRangesOfVregMap.values().forEach(rangesOfVreg -> rangesOfVreg.forEach(range -> range.usePointList.sort(Comparator.comparingInt(x -> x))));
         return vregRangesOfVregMap;
+    }
+
+    private static void addRange(LiveRange range) {
+        if (!vregRangesOfVregMap.containsKey(range.vreg))
+            vregRangesOfVregMap.put(range.vreg, new ArrayList<>());
+        vregRangesOfVregMap.get(range.vreg).add(range);
+        mergeLiveRanges(vregRangesOfVregMap.get(range.vreg));
+    }
+
+    private static void addUsePoint(VirtualReg vreg, int usePoint) {
+        vregRangesOfVregMap.get(vreg).get(0).usePointList.add(usePoint);
     }
 
     private static void mergeLiveRanges(List<LiveRange> rangeList) {

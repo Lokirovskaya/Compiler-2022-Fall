@@ -24,7 +24,7 @@ public class NodeListNode<E> {
         return node == null ? null : node.getSelf();
     }
 
-    public void set(E e, int offset) {
+    public void set(int offset, E e) {
         if (offset == 0) this.set(e);
         NodeListNode<E> node = this.next.nodeOffset(offset);
         if (node != null) node.data = e;

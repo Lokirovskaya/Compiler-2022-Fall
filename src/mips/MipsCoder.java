@@ -332,17 +332,16 @@ public class MipsCoder {
                     // @t[@x1] = @x2，@t 在这里不会被改变，因此不要使用含有 @t 的 addRegMips
                     // 最终形式为 sw valueReg, offsetReg(baseReg)
                     String baseReg = loadVregToReg(quater.target, quater.id, "$t8");
-                    String offsetReg;
                     if (quater.x1 instanceof InstNumber) {
-                        offsetReg = String.valueOf(((InstNumber) quater.x1).number * 4);
+                       int  offset = ((InstNumber) quater.x1).number * 4;
+                        addRegMips(String.format("sw @rx2, %d(%s)", offset, baseReg), quater);
                     }
                     else {
                         String indexReg = loadVregToReg((VirtualReg) quater.x1, quater.id, "$t9");
                         addMips("sll %s, %s, 2", indexReg, indexReg);
-                        addMips("add %s, %s, %s", baseReg, baseReg, indexReg);
-                        offsetReg = "0";
+                        addMips("add $t8, %s, %s",  baseReg, indexReg);
+                        addRegMips("sw @rx2, 0($t8)", quater);
                     }
-                    addRegMips(String.format("sw @rx2, %s(%s)", offsetReg, baseReg), quater);
                     break;
                 }
                 case SET_GLOBAL_ARRAY:

@@ -17,9 +17,10 @@ class ResultOutput {
     public static void output(InterCode inter, String filename) throws IOException {
         StringBuilder sb = new StringBuilder();
         inter.forEachItem(quater -> {
-                    if (quater.op != FUNC && quater.op != LABEL)
-                        sb.append("  ");
-                    sb.append(String.format("%-30s", quater));
+                    if (quater.op == FUNC || quater.op == LABEL)
+                        sb.append(String.format("%-32s", quater));
+                    else
+                        sb.append(String.format("  %-30s", quater));
                     List<Operand> allOperandList = new ArrayList<>();
                     allOperandList.add(quater.target);
                     allOperandList.add(quater.x1);
