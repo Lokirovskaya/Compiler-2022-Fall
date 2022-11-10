@@ -37,7 +37,7 @@ class Interval {
         int nowIdx = 0, nextIdx = 1;
         while (nextIdx < rangeList.size()) {
             Pair<Integer, Integer> now = rangeList.get(nowIdx), next = rangeList.get(nextIdx);
-            if (next.first <= now.second + 1) {
+            if (next.first <= now.second) {
                 now.second = Math.max(now.second, next.second);
                 next.first = -1; // to be deleted
                 nextIdx++;

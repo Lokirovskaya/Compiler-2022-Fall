@@ -177,7 +177,7 @@ public class MipsCoder {
                         else {
                             int stackOffset = (i - 4) * 4;
                             if (param.realReg >= 0) {
-                                addMips("lw %s, %d($sp)", getRegName(A0 + i), stackOffset);
+                                addMips("lw %s, %d($sp)", getRegName(param.realReg), stackOffset);
                             }
                             else { // 栈传参且目标参数也在栈上，概率很小，可以优化但是不做了
                                 assert param.stackOffset >= 0;
@@ -275,21 +275,23 @@ public class MipsCoder {
                     break;
                 case ALLOC: {
                     int arrayOffset = quater.target.stackOffset + 4;
-                    addRegMips(String.format("add @t, $sp, %d", arrayOffset), quater);
-                    for (int i = 0; quater.list != null && i < quater.list.size(); i++) {
-                        Operand o = quater.list.get(i);
-                        if (isZero(o)) {
-                            addMips("sw $zero, %d($sp)", arrayOffset + i * 4);
-                        }
-                        else if (o instanceof InstNumber) {
-                            addMips("li $t8, %d", ((InstNumber) o).number);
-                            addMips("sw $t8, %d($sp)", arrayOffset + i * 4);
-                        }
-                        else {
-                            String initValReg = loadVregToReg((VirtualReg) o, "$t8");
-                            addMips("sw %s, %d($sp)", initValReg, arrayOffset + i * 4);
+                    if (quater.list != null) {
+                        for (int i = 0; i < quater.list.size(); i++) {
+                            Operand o = quater.list.get(i);
+                            if (isZero(o)) {
+                                addMips("sw $zero, %d($sp)", arrayOffset + i * 4);
+                            }
+                            else if (o instanceof InstNumber) {
+                                addMips("li $t8, %d", ((InstNumber) o).number);
+                                addMips("sw $t8, %d($sp)", arrayOffset + i * 4);
+                            }
+                            else {
+                                String initValReg = loadVregToReg((VirtualReg) o, "$t8");
+                                addMips("sw %s, %d($sp)", initValReg, arrayOffset + i * 4);
+                            }
                         }
                     }
+                    addRegMips(String.format("add @t, $sp, %d", arrayOffset), quater);
                     break;
                 }
                 case GLOBAL_ALLOC: {
@@ -330,13 +332,13 @@ public class MipsCoder {
                     // 最终形式为 sw valueReg, offsetReg(baseReg)
                     String baseReg = loadVregToReg(quater.target, "$t8");
                     if (quater.x1 instanceof InstNumber) {
-                       int  offset = ((InstNumber) quater.x1).number * 4;
+                        int offset = ((InstNumber) quater.x1).number * 4;
                         addRegMips(String.format("sw @rx2, %d(%s)", offset, baseReg), quater);
                     }
                     else {
                         String indexReg = loadVregToReg((VirtualReg) quater.x1, "$t9");
-                        addMips("sll %s, %s, 2", indexReg, indexReg);
-                        addMips("add $t8, %s, %s",  baseReg, indexReg);
+                        addMips("sll $t9, %s, 2", indexReg);
+                        addMips("add $t8, %s, $t9", baseReg);
                         addRegMips("sw @rx2, 0($t8)", quater);
                     }
                     break;
@@ -348,8 +350,8 @@ public class MipsCoder {
                     }
                     else {
                         String indexReg = loadVregToReg((VirtualReg) quater.x1, "$t8");
-                        addMips("sll %s, %s, 2", indexReg, indexReg);
-                        addRegMips(String.format("sw @rx2, @label(%s)", indexReg), quater);
+                        addMips("sll $t8, %s, 2", indexReg, indexReg);
+                        addRegMips("sw @rx2, @label($t8)", quater);
                     }
                     break;
                 case ADD_ADDR:
@@ -478,37 +480,25 @@ public class MipsCoder {
                     addRegMips("move @t, $v0", quater);
                     break;
                 case PRINT_STR:
-                    if (quater.activeRegList != null && quater.activeRegList.contains(A0))
-                        addMips("move $t9, $a0");
                     addMips("la $a0, %s", quater.label);
                     addMips("li $v0, 4");
                     addMips("syscall");
-                    if (quater.activeRegList != null && quater.activeRegList.contains(A0))
-                        addMips("move $a0, $t9");
                     break;
                 case PRINT_CHAR:
-                    if (quater.activeRegList != null && quater.activeRegList.contains(A0))
-                        addMips("move $t9, $a0");
                     if (quater.x1 instanceof VirtualReg)
                         addRegMips("move $a0, @rx1", quater);
                     else
                         addRegMips("li $a0, @x1", quater);
                     addMips("li $v0, 11");
                     addMips("syscall");
-                    if (quater.activeRegList != null && quater.activeRegList.contains(A0))
-                        addMips("move $a0, $t9");
                     break;
                 case PRINT_INT:
-                    if (quater.activeRegList != null && quater.activeRegList.contains(A0))
-                        addMips("move $t9, $a0");
                     if (quater.x1 instanceof VirtualReg)
                         addRegMips("move $a0, @rx1", quater);
                     else
                         addRegMips("li $a0, @x1", quater);
                     addMips("li $v0, 1");
                     addMips("syscall");
-                    if (quater.activeRegList != null && quater.activeRegList.contains(A0))
-                        addMips("move $a0, $t9");
                     break;
             }
         });

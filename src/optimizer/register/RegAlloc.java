@@ -90,10 +90,10 @@ public class RegAlloc {
             // 填写 Quaternion.activeRegList 字段
             for (Block block : funcBlocks.blockList) {
                 block.blockInter.forEachItem(quater -> {
-                    if (quater.op == CALL || quater.op == PRINT_STR || quater.op == PRINT_INT || quater.op == PRINT_CHAR) {
+                    if (quater.op == CALL) {
                         quater.activeRegList = new HashSet<>();
                         for (Interval interval : result) {
-                            if (interval.realReg >= 0 && interval.start() <= quater.id && quater.id <= interval.end()) {
+                            if (interval.realReg >= 0 && interval.start() <= quater.id && quater.id < interval.end()) {
                                 quater.activeRegList.add(interval.realReg);
                             }
                         }
@@ -116,7 +116,7 @@ public class RegAlloc {
         private final Deque<Integer> regPool = new ArrayDeque<>(Arrays.asList(
                 8, 9, 10, 11, 12, 13, 14, 15, // t0-t7
                 16, 17, 18, 19, 20, 21, 22, 23, // s0-s7
-                3, 30 // v1, fp
+                3, 26, 27, 30 // v1, k0, k1, fp
         ));
 
         // 若返回 null，表示池已空

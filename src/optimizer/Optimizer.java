@@ -1,9 +1,7 @@
 package optimizer;
 
 import intercode.InterCode;
-import optimizer.peephole.MergeCondToBranch;
-import optimizer.peephole.RearrangeInst;
-import optimizer.peephole.ReduceBranch;
+import optimizer.peephole.*;
 import optimizer.register.RegAlloc;
 
 public class Optimizer {

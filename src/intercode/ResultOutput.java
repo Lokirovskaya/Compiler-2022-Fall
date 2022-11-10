@@ -37,6 +37,6 @@ class ResultOutput {
                     sb.append('\n');
                 }
         );
-        Files.write(Paths.get(filename), sb.toString().trim().getBytes(StandardCharsets.UTF_8));
+        Files.write(Paths.get(filename), sb.toString().getBytes(StandardCharsets.UTF_8));
     }
 }

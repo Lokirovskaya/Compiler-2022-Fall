@@ -73,7 +73,7 @@ class LivenessAnalysis {
             int blockEnd = block.blockInter.getLast().id;
 
             for (VirtualReg outVreg : block.out) {
-                getInterval.apply(outVreg).addRange(blockStart, blockEnd);
+                getInterval.apply(outVreg).addRange(blockStart, blockEnd + 1);
             }
 
             block.blockInter.forEachItemReverse(quater -> {

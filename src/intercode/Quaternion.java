@@ -16,8 +16,8 @@ public class Quaternion {
     public List<Operand> list;
 
     public int id = -1; // 仅寄存器分配时用
-    public Set<Integer> activeRegList; // 当前活跃的寄存器，只对 CALL，PRINT 指令记录
-    public boolean isUselessAssign = false;
+    public Set<Integer> activeRegList; // 当前指令之后仍然活跃的寄存器，只对 CALL 指令记录
+    public boolean isUselessAssign = false; // 无用赋值，在 LivenessAnalysis.java 中发现
 
     // not public
     Quaternion(OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
