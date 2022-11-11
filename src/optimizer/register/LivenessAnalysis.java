@@ -9,7 +9,8 @@ import util.Pair;
 import java.util.*;
 import java.util.function.Function;
 
-// 活跃变量分析，填充 block 的 in, out, use, def 字段
+// 活跃变量分析
+// 不计算全局变量和已分配寄存器的变量
 class LivenessAnalysis {
     public static List<Interval> run(FuncBlocks funcBlocks) {
         Map<VirtualReg, Interval> vregIntervalMap = new HashMap<>();
@@ -34,13 +35,13 @@ class LivenessAnalysis {
             block.blockInter.forEachItem(quater -> {
                 // use
                 for (VirtualReg useVreg : quater.getUseVregList()) {
-                    if (!block.def.contains(useVreg) && !useVreg.isGlobal) {
+                    if (!block.def.contains(useVreg) && needAlloc(useVreg)) {
                         block.use.add(useVreg);
                     }
                 }
                 // def
                 for (VirtualReg defVreg : quater.getDefVregList()) {
-                    if (!block.use.contains(defVreg) && !defVreg.isGlobal) {
+                    if (!block.use.contains(defVreg) && needAlloc(defVreg)) {
                         block.def.add(defVreg);
                     }
                 }
@@ -79,7 +80,7 @@ class LivenessAnalysis {
             block.blockInter.forEachItemReverse(quater -> {
                 // def
                 for (VirtualReg defVreg : quater.getDefVregList()) {
-                    if (!defVreg.isGlobal) {
+                    if (needAlloc(defVreg)) {
                         List<Pair<Integer, Integer>> ranges = getInterval.apply(defVreg).rangeList;
                         if (ranges.size() > 0)
                             ranges.get(0).first = quater.id;
@@ -91,7 +92,7 @@ class LivenessAnalysis {
                 }
                 // use
                 for (VirtualReg useVreg : quater.getUseVregList()) {
-                    if (!useVreg.isGlobal) {
+                    if (needAlloc(useVreg)) {
                         getInterval.apply(useVreg).addRange(blockStart, quater.id);
                         getInterval.apply(useVreg).addUsePoint(quater.id);
                     }
@@ -101,5 +102,9 @@ class LivenessAnalysis {
 
         vregIntervalMap.values().forEach(interval -> interval.usePointList.sort(Comparator.comparingInt(x -> x)));
         return new ArrayList<>(vregIntervalMap.values());
+    }
+
+    private static boolean needAlloc(VirtualReg vreg) {
+        return !vreg.isGlobal && vreg.realReg < 0;
     }
 }
