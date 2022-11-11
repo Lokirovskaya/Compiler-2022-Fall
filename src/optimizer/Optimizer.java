@@ -12,9 +12,10 @@ public class Optimizer {
         MergeCondToBranch.run(inter);
         ClearDeadCode.run(inter);
         ReduceBranch.run(inter);
-        MergePrint.run(inter);
         ClearLabel.run(inter);
-//        WeakenALU.run(inter);
+
+        MergePrint.run(inter);
+        WeakenALU.run(inter);
 
         RegAlloc.run(inter);
     }

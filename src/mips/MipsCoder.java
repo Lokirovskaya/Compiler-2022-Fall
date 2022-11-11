@@ -396,7 +396,7 @@ public class MipsCoder {
                     break;
                 case SUB:
                     if (quater.x2 instanceof VirtualReg)
-                        addRegMips("sub @t, @rx1, @x2", quater);
+                        addRegMips("sub @t, @rx1, @rx2", quater);
                     else
                         addRegMips(String.format("add @t, @rx1, %d", -((InstNumber) quater.x2).number), quater);
                     break;
@@ -412,7 +412,10 @@ public class MipsCoder {
                     addRegMips("mfhi @t", quater);
                     break;
                 case NEG:
-                    addRegMips("sub @t, $zero, @x1", quater);
+                    if (quater.x1 instanceof InstNumber)
+                        addRegMips(String.format("li @t, %d", -((InstNumber) quater.x1).number), quater);
+                    else
+                        addRegMips("sub @t, $zero, @rx1", quater);
                     break;
                 case NOT:
                     addRegMips("seq @t, @x1, $zero", quater);
