@@ -10,18 +10,18 @@ import java.util.Set;
 class FunctionInfo {
     String name;
     int frameSize;
-    boolean hasCall;
+    boolean isPureFunc = true; // 没有调用其它函数
     List<VirtualReg> paramList = new ArrayList<>();
-    Set<Integer> regUseList = new HashSet<>();
+    Set<Integer> regUseSet = new HashSet<>();
 
     @Override
     public String toString() {
         return "FunctionInfo{" +
                 "name='" + name + '\'' +
                 ", frameSize=" + frameSize +
-                ", hasCall=" + hasCall +
+                ", isPureFunc=" + isPureFunc +
                 ", paramList=" + paramList +
-                ", regUseList=" + regUseList +
+                ", regUseSet=" + regUseSet +
                 '}';
     }
 }

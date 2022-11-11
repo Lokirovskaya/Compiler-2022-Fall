@@ -13,7 +13,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class MipsCoder {
     private final InterCode inter;
@@ -27,7 +29,7 @@ public class MipsCoder {
 
     public void generateMips() {
         this.funcInfoMap = Allocator.alloc(inter);
-//        funcInfoMap.values().forEach(System.out::println);
+        funcInfoMap.values().forEach(System.out::println);
         generate();
         MipsOptimizer.optimize(mipsList);
     }
@@ -208,12 +210,22 @@ public class MipsCoder {
                 // 6. 按照目标函数的调用栈大小，恢复 $sp
                 // 7. 恢复 $ra 和保存的寄存器
                 case CALL: {
-                    String funcName = quater.label.name;
+                    String callingFuncName = quater.label.name;
                     // 总栈帧大小 frameSize + saveRegSize
-                    int frameSize = funcInfoMap.get(funcName).frameSize;
-                    int saveRegSize = quater.activeRegList == null ? 0 : quater.activeRegList.size() * 4;
+                    int frameSize = funcInfoMap.get(callingFuncName).frameSize;
+                    // 计算需要保存的活跃的寄存器
+                    // 如果被调用函数是 pure 的，就只保存活跃寄存器与 callee.regUseSet 的交集
+                    assert quater.activeRegSet != null;
+                    Set<Integer> regToSave;
+                    if (!funcInfoMap.get(callingFuncName).isPureFunc)
+                        regToSave = quater.activeRegSet;
+                    else {
+                        regToSave = new HashSet<>(quater.activeRegSet);
+                        regToSave.retainAll(funcInfoMap.get(callingFuncName).regUseSet);
+                    }
+                    int saveRegSize = regToSave.size() * 4;
 
-                    // 前 4 个参数放在 $a0 ~ $a3 中，之后的参数放在栈上
+                    // 传参，前 4 个参数放在 $a0 ~ $a3 中，之后的参数放在栈上
                     for (int i = 0; i < quater.list.size(); i++) {
                         Operand param = quater.list.get(i); // 实参（是 vreg 还是立即数）
                         if (i < 4) {
@@ -238,19 +250,21 @@ public class MipsCoder {
                         }
                     }
                     addMips("sw $ra, 0($sp)");
-                    if (quater.activeRegList != null) {
+
+                    // 保存需要保存的寄存器
+                    if (regToSave.size() > 0) {
                         int offset = -4;
-                        for (Integer reg : quater.activeRegList) {
+                        for (Integer reg : regToSave) {
                             addMips("sw %s, %d($sp)", getRegName(reg), offset);
                             offset -= 4;
                         }
                     }
                     addMips("add $sp, $sp, -%d", frameSize + saveRegSize);
-                    addMips("jal func_%s", funcName);
+                    addMips("jal func_%s", callingFuncName);
                     addMips("add $sp, $sp, %d", frameSize + saveRegSize);
-                    if (quater.activeRegList != null) {
+                    if (regToSave.size() > 0) {
                         int offset = -4;
-                        for (Integer reg : quater.activeRegList) {
+                        for (Integer reg : regToSave) {
                             addMips("lw %s, %d($sp)", getRegName(reg), offset);
                             offset -= 4;
                         }

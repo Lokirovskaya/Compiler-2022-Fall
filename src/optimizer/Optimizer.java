@@ -14,6 +14,7 @@ public class Optimizer {
         ReduceBranch.run(inter);
         MergePrint.run(inter);
         ClearLabel.run(inter);
+//        WeakenALU.run(inter);
 
         RegAlloc.run(inter);
     }

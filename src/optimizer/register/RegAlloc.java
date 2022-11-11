@@ -87,14 +87,14 @@ public class RegAlloc {
 
             // 填写 VirtualReg.realReg 字段
             result.forEach(interval -> interval.vreg.realReg = interval.realReg);
-            // 填写 Quaternion.activeRegList 字段
+            // 填写 Quaternion.activeRegSet 字段
             for (Block block : funcBlocks.blockList) {
                 block.blockInter.forEachItem(quater -> {
                     if (quater.op == CALL) {
-                        quater.activeRegList = new HashSet<>();
+                        quater.activeRegSet = new HashSet<>();
                         for (Interval interval : result) {
                             if (interval.realReg >= 0 && interval.start() <= quater.id && quater.id < interval.end()) {
-                                quater.activeRegList.add(interval.realReg);
+                                quater.activeRegSet.add(interval.realReg);
                             }
                         }
                     }

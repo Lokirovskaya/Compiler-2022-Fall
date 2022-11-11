@@ -54,7 +54,7 @@ class Allocator {
                 }
                 // 否则，记录寄存器到函数的寄存器表中
                 else {
-                    curFuncInfo.get().regUseList.add(vreg.realReg);
+                    curFuncInfo.get().regUseSet.add(vreg.realReg);
                 }
             }
             // 分配数组空间，位置紧邻数组地址
@@ -75,7 +75,7 @@ class Allocator {
             // 函数信息
             // 记录参数对应的 vreg
             else if (quater.op == CALL)
-                curFuncInfo.get().hasCall = true;
+                curFuncInfo.get().isPureFunc = false;
             else if (quater.op == FUNC)
                 curFuncInfo.get().paramList = quater.list.stream().map(o -> (VirtualReg) o).collect(Collectors.toList());
         });

@@ -28,8 +28,8 @@ class ResultOutput {
                             else sb.append('[').append(vreg.stackOffset).append(']');
                         }
                     }
-                    if (quater.activeRegList != null)
-                        sb.append("   active:").append(quater.activeRegList.stream()
+                    if (quater.activeRegSet != null)
+                        sb.append("   active:").append(quater.activeRegSet.stream()
                                 .map(reg -> MipsCoder.getRegName(reg))
                                 .collect(Collectors.toList())
                         );
