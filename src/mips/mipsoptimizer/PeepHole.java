@@ -1,14 +1,11 @@
-package mips;
+package mips.mipsoptimizer;
 
+import mips.Mips;
 import util.NodeList;
 import util.Wrap;
 
-class MipsOptimizer {
-    static void optimize(NodeList<Mips> mipsList) {
-        peepHole(mipsList);
-    }
-
-    private static void peepHole(NodeList<Mips> mips) {
+public class PeepHole {
+    public static void run(NodeList<Mips> mips) {
         Wrap<Boolean> inText = new Wrap<>(false);
         mips.forEachNode(p -> {
             // 跳过 .data
@@ -41,10 +38,18 @@ class MipsOptimizer {
                     p.delete();
                 }
             }
-            // move $t, $t
+            // move $t,$t
+            // move $t1,$t2; move $t2,$t1 -> move $t1,$t2
             if (args[0].equals("move")) {
                 if (args[1].equals(args[2])) {
                     p.delete();
+                }
+                if (p.get(1) != null) {
+                    if (p.get(1).args[0].equals("move")) {
+                        if (args[1].equals(p.get(1).args[2]) && args[2].equals(p.get(1).args[1])) {
+                            p.delete(1);
+                        }
+                    }
                 }
             }
             // add|sub $t, $t, 0
@@ -53,6 +58,7 @@ class MipsOptimizer {
                     p.delete();
                 }
             }
+
         });
     }
 

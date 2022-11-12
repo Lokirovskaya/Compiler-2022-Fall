@@ -6,6 +6,8 @@ import intercode.Operand;
 import intercode.Operand.InstNumber;
 import intercode.Operand.VirtualReg;
 import intercode.Quaternion;
+import mips.mipsoptimizer.PeepHole;
+import mips.mipsoptimizer.WeakenMult;
 import util.NodeList;
 import util.Wrap;
 
@@ -31,7 +33,8 @@ public class MipsCoder {
         this.funcInfoMap = Allocator.alloc(inter);
         funcInfoMap.values().forEach(System.out::println);
         generate();
-        MipsOptimizer.optimize(mipsList);
+        PeepHole.run(mipsList);
+        WeakenMult.run(mipsList);
     }
 
     public void output(String filename) throws IOException {
@@ -158,7 +161,7 @@ public class MipsCoder {
         inter.forEachItem(quater -> {
 //            addMips("# %s (t=%s, x1=%s, x2=%s, label=%s)", op.name(), quater.target, quater.x1, quater.x2, quater.label);
             switch (quater.op) {
-                case FUNC:
+                case FUNC: {
                     addMips("jr $ra");
                     addMips("func_%s:", quater.label.name);
                     for (int i = 0; i < quater.list.size(); i++) {
@@ -189,6 +192,7 @@ public class MipsCoder {
                         }
                     }
                     break;
+                }
                 case RETURN:
                     addMips("jr $ra");
                     break;

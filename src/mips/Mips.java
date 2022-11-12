@@ -4,8 +4,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Mips {
-    String code;
-    String[] args = new String[4]; // 对于 .data 段的数据，这几个字段是无意义的
+    public String code;
+    public String[] args = new String[4]; // 对于 .data 段的数据，这几个字段是无意义的
 
     private static final String splitRegex = "[a-zA-Z_][a-zA-Z0-9_]*|\\$zero|\\$..|-?\\d+";
     private static final Pattern pattern = Pattern.compile(splitRegex);

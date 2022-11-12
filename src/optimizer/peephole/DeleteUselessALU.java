@@ -3,11 +3,12 @@ package optimizer.peephole;
 import intercode.InterCode;
 import intercode.Operand;
 import intercode.Operand.InstNumber;
+import intercode.Operand.VirtualReg;
 import intercode.Quaternion;
 
 import static intercode.Quaternion.OperatorType.*;
 
-public class WeakenALU {
+public class DeleteUselessALU {
     public static void run(InterCode inter) {
         inter.forEachNode(p -> {
             // 0+x, x+0 -> set
@@ -53,12 +54,16 @@ public class WeakenALU {
                 if (isOne(p.get().x2) || isMinusOne(p.get().x2))
                     p.set(new Quaternion(SET, p.get().target, new InstNumber(0), null, null));
             }
+            // 最后处理 x <- x 的情况
+            if (p.get().op == SET) {
+                if (p.get().target == p.get().x1) p.delete();
+            }
         });
     }
 
     private static boolean isZero(Operand o) {
         if (o instanceof InstNumber) return ((InstNumber) o).number == 0;
-        else return ((Operand.VirtualReg) o).realReg == 0;
+        else return ((VirtualReg) o).realReg == 0;
     }
 
     private static boolean isOne(Operand o) {

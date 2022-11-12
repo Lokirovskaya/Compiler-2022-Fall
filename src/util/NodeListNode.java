@@ -34,10 +34,6 @@ public class NodeListNode<E> {
         this.next.insertNextSelf(e);
     }
 
-    public void insertPrev(E e) {
-        this.next.insertPrevSelf(e);
-    }
-
     public void delete() {
         nextDeleted = true;
         this.next.deleteSelf();
