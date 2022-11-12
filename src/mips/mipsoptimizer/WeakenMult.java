@@ -66,8 +66,8 @@ public class WeakenMult {
     // 2^k? 返回 k
     private static Integer case1(int num) {
         int shift = 0;
-        while ((1 << shift) < num) shift++;
-        if ((1 << shift) == num) return shift;
+        while ((1L << shift) < num) shift++;
+        if ((1L << shift) == num) return shift;
         else return null;
     }
 
@@ -86,7 +86,7 @@ public class WeakenMult {
         int shift = 0;
         int k = -1, r = -1;
         while ((num >> shift) > 0) {
-            if ((num & (1 << shift)) > 0) {
+            if ((num & (1L << shift)) > 0) {
                 if (r == -1) r = shift;
                 else if (k == -1) k = shift;
                 else return null;
@@ -100,8 +100,8 @@ public class WeakenMult {
     // 2^k - 2^r (k > r)? 返回 (k, r)
     private static Pair<Integer, Integer> case3Sub(int num) {
         int shift = 0;
-        while ((1 << shift) < num) shift++;
-        Integer r = case1((1 << shift) - num);
+        while ((1L << shift) < num) shift++;
+        Integer r = case1((int)((1L << shift) - num));
         if (r != null) return new Pair<>(shift, r);
         else return null;
     }
