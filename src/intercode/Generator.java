@@ -486,8 +486,13 @@ public class Generator {
                 return unaryAns;
             }
             else if (unaryOp.child(0).isType(MINUS)) { // negate
-                if (unaryAns instanceof InstNumber)
-                    return new InstNumber(-((InstNumber) unaryAns).number);
+                if (unaryAns instanceof InstNumber) {
+                    if (((InstNumber) unaryAns).overflow) {
+                        ((InstNumber) unaryAns).overflow = false;
+                        return new InstNumber(-2147483648);
+                    }
+                    else return new InstNumber(-((InstNumber) unaryAns).number);
+                }
                 else {
                     VirtualReg ans = newReg();
                     newQuater(OperatorType.NEG, ans, unaryAns, null, null);
@@ -565,8 +570,15 @@ public class Generator {
     private Operand NUMBER(Nonterminal exp) {
         assert exp.isType(_NUMBER_);
         Token number = (Token) exp.child(0);
-        int inst = Integer.parseInt(number.value);
-        return new InstNumber(inst);
+        if (number.value.equals("2147483648")) {
+            InstNumber inst = new InstNumber(0);
+            inst.overflow = true;
+            return inst;
+        }
+        else {
+            int x = Integer.parseInt(number.value);
+            return new InstNumber(x);
+        }
     }
 
     private void CONDITION(Nonterminal cond, Label trueLabel, Label falseLabel) {

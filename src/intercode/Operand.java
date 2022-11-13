@@ -32,6 +32,9 @@ public abstract class Operand {
 
     public static class InstNumber extends Operand {
         public int number;
+        // 值是否 = 2147483648，如果是，设为 true，在与负号计算得到 -2147483648 之后填入 number
+        // 只在生成中间代码时启用
+        boolean overflow = false;
 
         public InstNumber(int i) {
             this.number = i;
