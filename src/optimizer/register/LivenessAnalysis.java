@@ -32,20 +32,20 @@ class LivenessAnalysis {
             block.in = new HashSet<>();
             block.out = new HashSet<>();
 
-            block.blockInter.forEachItem(quater -> {
+            for (Quaternion q : block.blockInter) {
                 // use
-                for (VirtualReg useVreg : quater.getUseVregList()) {
+                for (VirtualReg useVreg : q.getUseVregList()) {
                     if (!block.def.contains(useVreg) && needAlloc(useVreg)) {
                         block.use.add(useVreg);
                     }
                 }
                 // def
-                for (VirtualReg defVreg : quater.getDefVregList()) {
+                for (VirtualReg defVreg : q.getDefVregList()) {
                     if (!block.use.contains(defVreg) && needAlloc(defVreg)) {
                         block.def.add(defVreg);
                     }
                 }
-            });
+            }
         }
 
         // 计算 in 和 out
@@ -70,14 +70,15 @@ class LivenessAnalysis {
         // 计算活跃区间
         for (int i = funcBlocks.blockList.size() - 1; i >= 0; i--) {
             Block block = funcBlocks.blockList.get(i);
-            int blockStart = block.blockInter.getFirst().id;
-            int blockEnd = block.blockInter.getLast().id;
+            int blockStart = block.blockInter.get(0).id;
+            int blockEnd = block.blockInter.get(block.blockInter.size() - 1).id;
 
             for (VirtualReg outVreg : block.out) {
                 getInterval.apply(outVreg).addRange(blockStart, blockEnd + 1);
             }
 
-            block.blockInter.forEachItemReverse(quater -> {
+            for (int j = block.blockInter.size() - 1; j >= 0; j--) {
+                Quaternion quater = block.blockInter.get(j);
                 // def
                 for (VirtualReg defVreg : quater.getDefVregList()) {
                     if (needAlloc(defVreg)) {
@@ -97,7 +98,7 @@ class LivenessAnalysis {
                         getInterval.apply(useVreg).addUsePoint(quater.id);
                     }
                 }
-            });
+            }
         }
 
         vregIntervalMap.values().forEach(interval -> interval.usePointList.sort(Comparator.comparingInt(x -> x)));

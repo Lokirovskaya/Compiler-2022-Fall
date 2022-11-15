@@ -1,49 +1,52 @@
 package optimizer.peephole;
 
-import intercode.InterCode;
+import intercode.Quaternion;
+
+import java.util.List;
 
 import static intercode.Quaternion.OperatorType.*;
 
 public class ReduceBranch {
-    public static void run(InterCode inter) {
-        inter.forEachNode(p -> {
+    public static void run(List<Quaternion> inter) {
+        for (int i = 0; i < inter.size(); i++) {
+            Quaternion q = inter.get(i);
             while (true) {
                 // [if cond] goto A; {label X}; label A; -> {label X}; label A;
-                if (p.get(1) != null &&
-                        (p.get().op == GOTO || p.get().op == IF || p.get().op == IF_NOT) &&
-                        p.get(1).op == LABEL) {
-                    int i = 1;
+                if (i + 1 < inter.size() &&
+                        (q.op == GOTO || q.op == IF || q.op == IF_NOT) &&
+                        inter.get(i + 1).op == LABEL) {
+                    int k = 1;
                     boolean found = false;
-                    while (p.get(i) != null && p.get(i).op == LABEL) {
-                        if (p.get().label == p.get(i).label) {
-                            p.delete();
+                    while (i + k < inter.size() && inter.get(i + k).op == LABEL) {
+                        if (q.label == inter.get(i + k).label) {
+                            inter.remove(i--);
                             found = true;
                             break;
                         }
-                        i++;
+                        k++;
                     }
                     if (found) continue;
                 }
                 // if cond goto A; goto B; label A; -> if_not cond goto B; label A;
-                if (p.get(2) != null &&
-                        (p.get().op == IF || p.get().op == IF_NOT) &&
-                        p.get(1).op == GOTO && p.get(2).op == LABEL &&
-                        p.get().label == p.get(2).label) {
-                    p.get().op = (p.get().op == IF) ? IF_NOT : IF;
-                    p.get().label = p.get(1).label;
-                    p.delete(1);
+                if (i + 2 < inter.size() &&
+                        (q.op == IF || q.op == IF_NOT) &&
+                        inter.get(i + 1).op == GOTO && inter.get(i + 2).op == LABEL &&
+                        q.label == inter.get(i + 2).label) {
+                    q.op = (q.op == IF) ? IF_NOT : IF;
+                    q.label = inter.get(i + 1).label;
+                    inter.remove(i + 1);
                     continue;
                 }
                 // if cond goto A; goto A; -> goto A;
-                if (p.get(1) != null &&
-                        (p.get().op == IF || p.get().op == IF_NOT) &&
-                        p.get(1).op == GOTO &&
-                        p.get().label == p.get(1).label) {
-                    p.delete();
+                if (i + 1 < inter.size() &&
+                        (q.op == IF || q.op == IF_NOT) &&
+                        inter.get(i + 1).op == GOTO &&
+                        q.label == inter.get(i + 1).label) {
+                    inter.remove(i--);
                     continue;
                 }
                 break;
             }
-        });
+        }
     }
 }

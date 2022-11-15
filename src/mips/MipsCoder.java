@@ -1,6 +1,5 @@
 package mips;
 
-import intercode.InterCode;
 import intercode.Label;
 import intercode.Operand;
 import intercode.Operand.InstNumber;
@@ -8,24 +7,21 @@ import intercode.Operand.VirtualReg;
 import intercode.Quaternion;
 import mips.mipsoptimizer.PeepHole;
 import mips.mipsoptimizer.WeakenMult;
-import util.NodeList;
 import util.Wrap;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class MipsCoder {
-    private final InterCode inter;
-    private final NodeList<Mips> mipsList = new NodeList<>();
+    private final List<Quaternion> inter;
+    private final List<Mips> mipsList = new ArrayList<>();
     private Map<String, FunctionInfo> funcInfoMap;
     private static final int A0 = 4;
 
-    public MipsCoder(InterCode inter) {
+    public MipsCoder(List<Quaternion> inter) {
         this.inter = inter;
     }
 
@@ -39,7 +35,7 @@ public class MipsCoder {
 
     public void output(String filename) throws IOException {
         StringBuilder result = new StringBuilder();
-        mipsList.forEachItem(quater -> result.append(quater.code).append('\n'));
+        mipsList.forEach(mips -> result.append(mips.code).append('\n'));
         Files.write(Paths.get(filename), result.toString().getBytes(StandardCharsets.UTF_8));
     }
 
@@ -51,7 +47,7 @@ public class MipsCoder {
 
     private void addMips(String format, Object... args) {
         assert !format.contains("@");
-        mipsList.addLast(new Mips(String.format(format, args)));
+        mipsList.add(new Mips(String.format(format, args)));
     }
 
     // 获取 vreg 对应的 reg；如果 vreg 存放在栈上，就从栈上加载到 defaultReg 中
@@ -128,24 +124,24 @@ public class MipsCoder {
     private void generate() {
         addMips(".data");
         Wrap<Integer> stringIdx = new Wrap<>(1);
-        inter.forEachItem(quater -> {
-            switch (quater.op) {
+        for (Quaternion q : inter) {
+            switch (q.op) {
                 case PRINT_STR:
                     // 将 print_str 的 label 改为 str_%d
-                    addMips("str_%d: .asciiz \"%s\"", stringIdx.get(), quater.label);
-                    quater.label = new Label("str_" + stringIdx.get());
+                    addMips("str_%d: .asciiz \"%s\"", stringIdx.get(), q.label);
+                    q.label = new Label("str_" + stringIdx.get());
                     stringIdx.set(stringIdx.get() + 1);
                     break;
                 case GLOBAL_ALLOC: {
-                    int size = ((InstNumber) quater.x1).number;
-                    if (quater.list == null || quater.list.size() == 0) {
-                        addMips("%s: .space %d", quater.label, size * 4);
+                    int size = ((InstNumber) q.x1).number;
+                    if (q.list == null || q.list.size() == 0) {
+                        addMips("%s: .space %d", q.label, size * 4);
                     }
                     else {
-                        assert quater.list.size() == size;
+                        assert q.list.size() == size;
                         StringBuilder sb = new StringBuilder();
-                        sb.append(quater.label).append(": .word ");
-                        for (Operand o : quater.list) {
+                        sb.append(q.label).append(": .word ");
+                        for (Operand o : q.list) {
                             int wordVal = 0; // 不能确定的值，word 段填写 0
                             if (o instanceof InstNumber) wordVal = ((InstNumber) o).number;
                             sb.append(wordVal).append(", ");
@@ -155,17 +151,16 @@ public class MipsCoder {
                     break;
                 }
             }
-        });
+        }
 
         addMips(".text");
-        inter.forEachItem(quater -> {
-//            addMips("# %s (t=%s, x1=%s, x2=%s, label=%s)", op.name(), quater.target, quater.x1, quater.x2, quater.label);
-            switch (quater.op) {
+        for (Quaternion q : inter) {
+            switch (q.op) {
                 case FUNC: {
                     addMips("jr $ra");
-                    addMips("func_%s:", quater.label.name);
-                    for (int i = 0; i < quater.list.size(); i++) {
-                        VirtualReg param = (VirtualReg) quater.list.get(i);
+                    addMips("func_%s:", q.label.name);
+                    for (int i = 0; i < q.list.size(); i++) {
+                        VirtualReg param = (VirtualReg) q.list.get(i);
                         // 寄存器传参
                         if (i < 4) {
                             // 目标参数在寄存器上
@@ -197,13 +192,13 @@ public class MipsCoder {
                     addMips("jr $ra");
                     break;
                 case SET_RETURN:
-                    if (quater.x1 instanceof VirtualReg)
-                        addRegMips("move $v0, @rx1", quater);
+                    if (q.x1 instanceof VirtualReg)
+                        addRegMips("move $v0, @rx1", q);
                     else
-                        addRegMips("li $v0, @x1", quater);
+                        addRegMips("li $v0, @x1", q);
                     break;
                 case GET_RETURN:
-                    addRegMips("move @t, $v0", quater);
+                    addRegMips("move @t, $v0", q);
                     break;
                 // 对于函数的调用者：
                 // 1. 存放目标函数需要的参数
@@ -214,24 +209,24 @@ public class MipsCoder {
                 // 6. 按照目标函数的调用栈大小，恢复 $sp
                 // 7. 恢复 $ra 和保存的寄存器
                 case CALL: {
-                    String callingFuncName = quater.label.name;
+                    String callingFuncName = q.label.name;
                     // 总栈帧大小 frameSize + saveRegSize
                     int frameSize = funcInfoMap.get(callingFuncName).frameSize;
                     // 计算需要保存的活跃的寄存器
                     // 如果被调用函数是 pure 的，就只保存活跃寄存器与 callee.regUseSet 的交集
-                    assert quater.activeRegSet != null;
+                    assert q.activeRegSet != null;
                     Set<Integer> regToSave;
                     if (!funcInfoMap.get(callingFuncName).isPureFunc)
-                        regToSave = quater.activeRegSet;
+                        regToSave = q.activeRegSet;
                     else {
-                        regToSave = new HashSet<>(quater.activeRegSet);
+                        regToSave = new HashSet<>(q.activeRegSet);
                         regToSave.retainAll(funcInfoMap.get(callingFuncName).regUseSet);
                     }
                     int saveRegSize = regToSave.size() * 4;
 
                     // 传参，前 4 个参数放在 $a0 ~ $a3 中，之后的参数放在栈上
-                    for (int i = 0; i < quater.list.size(); i++) {
-                        Operand param = quater.list.get(i); // 实参（是 vreg 还是立即数）
+                    for (int i = 0; i < q.list.size(); i++) {
+                        Operand param = q.list.get(i); // 实参（是 vreg 还是立即数）
                         if (i < 4) {
                             int targetRegId = A0 + i;
                             if (param instanceof InstNumber)
@@ -283,19 +278,19 @@ public class MipsCoder {
                     addMips("syscall");
                     break;
                 case LABEL:
-                    addMips("%s:", quater.label.name);
+                    addMips("%s:", q.label.name);
                     break;
                 case SET:
-                    if (quater.x1 instanceof VirtualReg)
-                        addRegMips("move @t, @rx1", quater);
+                    if (q.x1 instanceof VirtualReg)
+                        addRegMips("move @t, @rx1", q);
                     else
-                        addRegMips("li @t, @x1", quater);
+                        addRegMips("li @t, @x1", q);
                     break;
                 case ALLOC: {
-                    int arrayOffset = quater.target.stackOffset + 4;
-                    if (quater.list != null) {
-                        for (int i = 0; i < quater.list.size(); i++) {
-                            Operand o = quater.list.get(i);
+                    int arrayOffset = q.target.stackOffset + 4;
+                    if (q.list != null) {
+                        for (int i = 0; i < q.list.size(); i++) {
+                            Operand o = q.list.get(i);
                             if (isZero(o)) {
                                 addMips("sw $zero, %d($sp)", arrayOffset + i * 4);
                             }
@@ -309,220 +304,220 @@ public class MipsCoder {
                             }
                         }
                     }
-                    addRegMips(String.format("add @t, $sp, %d", arrayOffset), quater);
+                    addRegMips(String.format("add @t, $sp, %d", arrayOffset), q);
                     break;
                 }
                 case GLOBAL_ALLOC: {
                     // 设置初值未确定的变量的值
-                    for (int i = 0; quater.list != null && i < quater.list.size(); i++) {
-                        Operand o = quater.list.get(i);
+                    for (int i = 0; q.list != null && i < q.list.size(); i++) {
+                        Operand o = q.list.get(i);
                         if (o instanceof VirtualReg) {
                             String initValReg = loadVregToReg((VirtualReg) o, "$t8");
-                            addMips("sw %s, %s + %d", initValReg, quater.label, i * 4);
+                            addMips("sw %s, %s + %d", initValReg, q.label, i * 4);
                         }
                     }
                     break;
                 }
                 case GET_ARRAY: {
                     // @t = @x1[@x2]
-                    if (quater.x2 instanceof InstNumber) {
-                        addRegMips(String.format("lw @t, %d(@rx1)", ((InstNumber) quater.x2).number * 4), quater);
+                    if (q.x2 instanceof InstNumber) {
+                        addRegMips(String.format("lw @t, %d(@rx1)", ((InstNumber) q.x2).number * 4), q);
                     }
                     else {
-                        addRegMips("sll $t9, @rx2, 2", quater);
-                        addRegMips("add $t9, $t9, @x1", quater);
-                        addRegMips("lw @t, 0($t9)", quater);
+                        addRegMips("sll $t9, @rx2, 2", q);
+                        addRegMips("add $t9, $t9, @x1", q);
+                        addRegMips("lw @t, 0($t9)", q);
                     }
                     break;
                 }
                 case GET_GLOBAL_ARRAY:
                     // @t = @label[@x2]
-                    if (quater.x2 instanceof InstNumber) {
-                        addRegMips(String.format("lw @t, @label + %d", ((InstNumber) quater.x2).number * 4), quater);
+                    if (q.x2 instanceof InstNumber) {
+                        addRegMips(String.format("lw @t, @label + %d", ((InstNumber) q.x2).number * 4), q);
                     }
                     else {
-                        addRegMips("sll $t9, @rx2, 2", quater);
-                        addRegMips("lw @t, @label($t9)", quater);
+                        addRegMips("sll $t9, @rx2, 2", q);
+                        addRegMips("lw @t, @label($t9)", q);
                     }
                     break;
                 case SET_ARRAY: {
                     // @t[@x1] = @x2，@t 在这里不会被改变，因此不要使用含有 @t 的 addRegMips
                     // 最终形式为 sw valueReg, offsetReg(baseReg)
-                    String baseReg = loadVregToReg(quater.target, "$t8");
-                    if (quater.x1 instanceof InstNumber) {
-                        int offset = ((InstNumber) quater.x1).number * 4;
-                        addRegMips(String.format("sw @rx2, %d(%s)", offset, baseReg), quater);
+                    String baseReg = loadVregToReg(q.target, "$t8");
+                    if (q.x1 instanceof InstNumber) {
+                        int offset = ((InstNumber) q.x1).number * 4;
+                        addRegMips(String.format("sw @rx2, %d(%s)", offset, baseReg), q);
                     }
                     else {
-                        String indexReg = loadVregToReg((VirtualReg) quater.x1, "$t9");
+                        String indexReg = loadVregToReg((VirtualReg) q.x1, "$t9");
                         addMips("sll $t9, %s, 2", indexReg);
                         addMips("add $t8, %s, $t9", baseReg);
-                        addRegMips("sw @rx2, 0($t8)", quater);
+                        addRegMips("sw @rx2, 0($t8)", q);
                     }
                     break;
                 }
                 case SET_GLOBAL_ARRAY:
                     // @label[@x1] = @x2
-                    if (quater.x1 instanceof InstNumber) {
-                        addRegMips(String.format("sw @rx2, @label + %d", ((InstNumber) quater.x1).number * 4), quater);
+                    if (q.x1 instanceof InstNumber) {
+                        addRegMips(String.format("sw @rx2, @label + %d", ((InstNumber) q.x1).number * 4), q);
                     }
                     else {
-                        String indexReg = loadVregToReg((VirtualReg) quater.x1, "$t8");
+                        String indexReg = loadVregToReg((VirtualReg) q.x1, "$t8");
                         addMips("sll $t8, %s, 2", indexReg, indexReg);
-                        addRegMips("sw @rx2, @label($t8)", quater);
+                        addRegMips("sw @rx2, @label($t8)", q);
                     }
                     break;
                 case ADD_ADDR:
                     // @&t = @&x1 + @x2
-                    assert quater.target.isAddr;
-                    assert quater.x1 instanceof VirtualReg && ((VirtualReg) quater.x1).isAddr;
-                    if (quater.x2 instanceof InstNumber) {
-                        addRegMips(String.format("add @t, @rx1, %d", ((InstNumber) quater.x2).number * 4), quater);
+                    assert q.target.isAddr;
+                    assert q.x1 instanceof VirtualReg && ((VirtualReg) q.x1).isAddr;
+                    if (q.x2 instanceof InstNumber) {
+                        addRegMips(String.format("add @t, @rx1, %d", ((InstNumber) q.x2).number * 4), q);
                     }
-                    else if (quater.x2 instanceof VirtualReg) {
-                        addRegMips("sll $t9, @rx2, 2", quater);
-                        addRegMips("add @t, @rx1, $t9", quater);
+                    else if (q.x2 instanceof VirtualReg) {
+                        addRegMips("sll $t9, @rx2, 2", q);
+                        addRegMips("add @t, @rx1, $t9", q);
                     }
                     break;
                 case ADD_GLOBAL_ADDR:
                     // @&t = @label + @x2
-                    addMips("la $t8, %s", quater.label);
-                    if (quater.x2 instanceof InstNumber) {
-                        addRegMips(String.format("add @t, $t8, %d", ((InstNumber) quater.x2).number * 4), quater);
+                    addMips("la $t8, %s", q.label);
+                    if (q.x2 instanceof InstNumber) {
+                        addRegMips(String.format("add @t, $t8, %d", ((InstNumber) q.x2).number * 4), q);
                     }
                     else {
-                        addRegMips("sll $t9, @rx2, 2", quater);
-                        addRegMips("add @t, $t8, $t9", quater);
+                        addRegMips("sll $t9, @rx2, 2", q);
+                        addRegMips("add @t, $t8, $t9", q);
                     }
                     break;
                 case ADD:
-                    addRegMips("add @t, @rx1, @x2", quater);
+                    addRegMips("add @t, @rx1, @x2", q);
                     break;
                 case SUB:
-                    if (quater.x2 instanceof VirtualReg)
-                        addRegMips("sub @t, @rx1, @rx2", quater);
+                    if (q.x2 instanceof VirtualReg)
+                        addRegMips("sub @t, @rx1, @rx2", q);
                     else
-                        addRegMips(String.format("add @t, @rx1, %d", -((InstNumber) quater.x2).number), quater);
+                        addRegMips(String.format("add @t, @rx1, %d", -((InstNumber) q.x2).number), q);
                     break;
                 case MULT:
-                    addRegMips("mul @t, @rx1, @x2", quater);
+                    addRegMips("mul @t, @rx1, @x2", q);
                     break;
                 case DIV:
-                    addRegMips("div @rx1, @rx2", quater);
-                    addRegMips("mflo @t", quater);
+                    addRegMips("div @rx1, @rx2", q);
+                    addRegMips("mflo @t", q);
                     break;
                 case MOD:
-                    addRegMips("div @rx1, @rx2", quater);
-                    addRegMips("mfhi @t", quater);
+                    addRegMips("div @rx1, @rx2", q);
+                    addRegMips("mfhi @t", q);
                     break;
                 case NEG:
-                    if (quater.x1 instanceof InstNumber)
-                        addRegMips(String.format("li @t, %d", -((InstNumber) quater.x1).number), quater);
+                    if (q.x1 instanceof InstNumber)
+                        addRegMips(String.format("li @t, %d", -((InstNumber) q.x1).number), q);
                     else
-                        addRegMips("sub @t, $zero, @rx1", quater);
+                        addRegMips("sub @t, $zero, @rx1", q);
                     break;
                 case NOT:
-                    addRegMips("seq @t, @x1, $zero", quater);
+                    addRegMips("seq @t, @x1, $zero", q);
                     break;
                 case EQ:
-                    addRegMips("seq @t, @rx1, @x2", quater);
+                    addRegMips("seq @t, @rx1, @x2", q);
                     break;
                 case NOT_EQ:
-                    addRegMips("sne @t, @rx1, @x2", quater);
+                    addRegMips("sne @t, @rx1, @x2", q);
                     break;
                 case LESS:
-                    if (quater.x2 instanceof InstNumber) {
-                        int x = ((InstNumber) quater.x2).number;
+                    if (q.x2 instanceof InstNumber) {
+                        int x = ((InstNumber) q.x2).number;
                         if (-32768 <= x && x <= 32767)
-                            addRegMips("slti @t, @rx1, @x2", quater);
+                            addRegMips("slti @t, @rx1, @x2", q);
                         else
-                            addRegMips("slt @t, @rx1, @rx2", quater);
+                            addRegMips("slt @t, @rx1, @rx2", q);
                     }
                     else
-                        addRegMips("slt @t, @rx1, @rx2", quater);
+                        addRegMips("slt @t, @rx1, @rx2", q);
                     break;
                 case LESS_EQ:
-                    addRegMips("sle @t, @rx1, @x2", quater);
+                    addRegMips("sle @t, @rx1, @x2", q);
                     break;
                 case GREATER:
-                    addRegMips("sgt @t, @rx1, @x2", quater);
+                    addRegMips("sgt @t, @rx1, @x2", q);
                     break;
                 case GREATER_EQ:
-                    addRegMips("sge @t, @rx1, @x2", quater);
+                    addRegMips("sge @t, @rx1, @x2", q);
                     break;
                 case GOTO:
-                    addRegMips("j @label", quater);
+                    addRegMips("j @label", q);
                     break;
                 case IF:
-                    addRegMips("bne @rx1, $zero, @label", quater);
+                    addRegMips("bne @rx1, $zero, @label", q);
                     break;
                 case IF_NOT:
-                    addRegMips("beq @rx1, $zero, @label", quater);
+                    addRegMips("beq @rx1, $zero, @label", q);
                     break;
                 case IF_EQ:
-                    if (isZero(quater.x2))
-                        addRegMips("beq @rx1, $zero, @label", quater);
+                    if (isZero(q.x2))
+                        addRegMips("beq @rx1, $zero, @label", q);
                     else
-                        addRegMips("beq @rx1, @x2, @label", quater);
+                        addRegMips("beq @rx1, @x2, @label", q);
                     break;
                 case IF_NOT_EQ:
-                    if (isZero(quater.x2))
-                        addRegMips("bne @rx1, $zero, @label", quater);
+                    if (isZero(q.x2))
+                        addRegMips("bne @rx1, $zero, @label", q);
                     else
-                        addRegMips("bne @rx1, @x2, @label", quater);
+                        addRegMips("bne @rx1, @x2, @label", q);
                     break;
                 case IF_LESS:
-                    if (isZero(quater.x2))
-                        addRegMips("bltz @rx1, @label", quater);
+                    if (isZero(q.x2))
+                        addRegMips("bltz @rx1, @label", q);
                     else
-                        addRegMips("blt @rx1, @x2, @label", quater);
+                        addRegMips("blt @rx1, @x2, @label", q);
                     break;
                 case IF_LESS_EQ:
-                    if (isZero(quater.x2))
-                        addRegMips("blez @rx1, @label", quater);
+                    if (isZero(q.x2))
+                        addRegMips("blez @rx1, @label", q);
                     else
-                        addRegMips("ble @rx1, @x2, @label", quater);
+                        addRegMips("ble @rx1, @x2, @label", q);
                     break;
                 case IF_GREATER:
-                    if (isZero(quater.x2))
-                        addRegMips("bgtz @rx1, @label", quater);
+                    if (isZero(q.x2))
+                        addRegMips("bgtz @rx1, @label", q);
                     else
-                        addRegMips("bgt @rx1, @x2, @label", quater);
+                        addRegMips("bgt @rx1, @x2, @label", q);
                     break;
                 case IF_GREATER_EQ:
-                    if (isZero(quater.x2))
-                        addRegMips("bgez @rx1, @label", quater);
+                    if (isZero(q.x2))
+                        addRegMips("bgez @rx1, @label", q);
                     else
-                        addRegMips("bge @rx1, @x2, @label", quater);
+                        addRegMips("bge @rx1, @x2, @label", q);
                     break;
                 case GETINT:
                     addMips("li $v0, 5");
                     addMips("syscall");
-                    addRegMips("move @t, $v0", quater);
+                    addRegMips("move @t, $v0", q);
                     break;
                 case PRINT_STR:
-                    addMips("la $a0, %s", quater.label);
+                    addMips("la $a0, %s", q.label);
                     addMips("li $v0, 4");
                     addMips("syscall");
                     break;
                 case PRINT_CHAR:
-                    if (quater.x1 instanceof VirtualReg)
-                        addRegMips("move $a0, @rx1", quater);
+                    if (q.x1 instanceof VirtualReg)
+                        addRegMips("move $a0, @rx1", q);
                     else
-                        addRegMips("li $a0, @x1", quater);
+                        addRegMips("li $a0, @x1", q);
                     addMips("li $v0, 11");
                     addMips("syscall");
                     break;
                 case PRINT_INT:
-                    if (quater.x1 instanceof VirtualReg)
-                        addRegMips("move $a0, @rx1", quater);
+                    if (q.x1 instanceof VirtualReg)
+                        addRegMips("move $a0, @rx1", q);
                     else
-                        addRegMips("li $a0, @x1", quater);
+                        addRegMips("li $a0, @x1", q);
                     addMips("li $v0, 1");
                     addMips("syscall");
                     break;
             }
-        });
+        }
     }
 
     private boolean isZero(Operand x) {

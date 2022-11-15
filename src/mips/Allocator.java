@@ -1,11 +1,12 @@
 package mips;
 
-import intercode.InterCode;
 import intercode.Operand.InstNumber;
 import intercode.Operand.VirtualReg;
+import intercode.Quaternion;
 import util.Wrap;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -14,31 +15,31 @@ import static intercode.Quaternion.OperatorType.*;
 class Allocator {
     // 1. 为栈上分配变量和寄存器的保存分配栈空间
     // 2. 获取所有函数的信息
-    static Map<String, FunctionInfo> alloc(InterCode inter) {
+    static Map<String, FunctionInfo> alloc(List<Quaternion> inter) {
         Map<String, FunctionInfo> funcInfoMap = new HashMap<>();
 
         Wrap<FunctionInfo> curFuncInfo = new Wrap<>(new FunctionInfo());
         curFuncInfo.get().name = ".global";
         Wrap<Integer> curOffset = new Wrap<>(0); // 0($sp) 的位置保留给 $ra
         Wrap<Integer> curGlobalOffset = new Wrap<>(-4); // $gp 空间，不需要留 $ra
-        inter.forEachItem(quater -> {
+        inter.forEach(q -> {
             // 函数
             // 遇到下一个 func，结算当前 func
-            if (quater.op == FUNC) {
+            if (q.op == FUNC) {
                 // 结算旧函数
                 curFuncInfo.get().frameSize = curOffset.get() + 4;
                 funcInfoMap.put(curFuncInfo.get().name, curFuncInfo.get());
                 // 新函数
                 curFuncInfo.set(new FunctionInfo());
-                curFuncInfo.get().name = quater.label.name;
+                curFuncInfo.get().name = q.label.name;
                 // 预留参数的位置
-                int stackParamCount = quater.list.size() > 4 ? quater.list.size() - 4 : 0;
+                int stackParamCount = q.list.size() > 4 ? q.list.size() - 4 : 0;
                 curOffset.set(stackParamCount * 4);
             }
 
             // 变量
             // 对任意四元式中 vreg 的分配，跳过立即数和已分配寄存器的 vreg
-            for (VirtualReg vreg : quater.getAllVregList()) {
+            for (VirtualReg vreg : q.getAllVregList()) {
                 // 如果一个 vreg 未分配寄存器，就为它分配栈空间
                 if (vreg.realReg < 0) {
                     if (vreg.stackOffset < 0) {
@@ -58,26 +59,26 @@ class Allocator {
                 }
             }
             // 分配数组空间，位置紧邻数组地址
-            if (quater.op == ALLOC) {
-                assert quater.x1 instanceof InstNumber;
-                int arraySize = ((InstNumber) quater.x1).number * 4;
-                if (quater.target.isGlobal) {
+            if (q.op == ALLOC) {
+                assert q.x1 instanceof InstNumber;
+                int arraySize = ((InstNumber) q.x1).number * 4;
+                if (q.target.isGlobal) {
                     curGlobalOffset.set(curGlobalOffset.get() + 4);
-                    quater.target.stackOffset = curGlobalOffset.get();
+                    q.target.stackOffset = curGlobalOffset.get();
                     curGlobalOffset.set(curGlobalOffset.get() + arraySize);
                 }
                 else {
                     curOffset.set(curOffset.get() + 4);
-                    quater.target.stackOffset = curOffset.get();
+                    q.target.stackOffset = curOffset.get();
                     curOffset.set(curOffset.get() + arraySize);
                 }
             }
             // 函数信息
             // 记录参数对应的 vreg
-            else if (quater.op == CALL)
+            else if (q.op == CALL)
                 curFuncInfo.get().isPureFunc = false;
-            else if (quater.op == FUNC)
-                curFuncInfo.get().paramList = quater.list.stream().map(o -> (VirtualReg) o).collect(Collectors.toList());
+            else if (q.op == FUNC)
+                curFuncInfo.get().paramList = q.list.stream().map(o -> (VirtualReg) o).collect(Collectors.toList());
         });
         curFuncInfo.get().frameSize = curOffset.get() + 4;
         funcInfoMap.put(curFuncInfo.get().name, curFuncInfo.get());

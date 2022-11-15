@@ -1,6 +1,6 @@
 import error.ErrorList;
 import intercode.Generator;
-import intercode.InterCode;
+import intercode.Quaternion;
 import lexer.Lexer;
 import lexer.Token;
 import mips.MipsCoder;
@@ -48,13 +48,13 @@ public class Compiler {
         if (ErrorList.size() > 0) return;
 
         Generator generator = new Generator(root, identSymbolMap);
-        InterCode inter = generator.generate();
+        List<Quaternion> inter = generator.generate();
         Optimizer.optimize(inter);
 
         MipsCoder mipsCoder = new MipsCoder(inter);
         mipsCoder.generateMips();
 
-        inter.output("inter.txt");
+        intercode.ResultOutput.output(inter, "inter.txt");
         mipsCoder.output("mips.txt");
     }
 }

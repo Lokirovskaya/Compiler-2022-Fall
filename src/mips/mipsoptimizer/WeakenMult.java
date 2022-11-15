@@ -1,11 +1,11 @@
 package mips.mipsoptimizer;
 
 import mips.Mips;
-import util.NodeList;
 import util.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 // 乘法优化，由于 mul 指令只需要 4 ticks，因此只有以下三种情况优化有效：
 // 对于 a = b * m (m > 0)
@@ -14,53 +14,55 @@ import java.util.List;
 // 3. m = 2^k ± 2^r (k > r > 0)，化为 t = b << k; a = b << r; a = t ± a
 // 如果 m 是负数，还需要额外加上 neg 指令，因此只有 1, 2 种情况需要优化
 public class WeakenMult {
-    public static void run(NodeList<Mips> inter) {
-        inter.forEachNode(p -> {
-            String[] args = p.get().args;
+    public static void run(List<Mips> mipsList) {
+        for (int i = 0; i < mipsList.size(); i++) {
+            Mips mips = mipsList.get(i);
+            String[] args = mips.args;
             // mul $t1, $t2, 123
             if (args[0].equals("mul") && isNumber(args[3])) {
                 int inst = Integer.parseInt(args[3]);
                 if (inst == 0) {
-                    p.set(new Mips(String.format("li %s, 0", args[1])));
-                    return;
+                    mipsList.set(i, new Mips(String.format("li %s, 0", args[1])));
+                    continue;
                 }
 
-                List<String> mipsList = new ArrayList<>();
+                List<String> codeList = new ArrayList<>();
                 String target = args[1], mul = args[2];
                 Integer k;
                 Pair<Integer, Integer> pair; // (k, r)
                 int abs = Math.abs(inst);
                 if ((k = case1(abs)) != null) {
-                    mipsList.add(String.format("sll %s, %s, %d", target, mul, k));
+                    codeList.add(String.format("sll %s, %s, %d", target, mul, k));
                 }
                 else if ((k = case2Add(abs)) != null) {
-                    mipsList.add(String.format("sll $t9, %s, %d", mul, k));
-                    mipsList.add(String.format("add %s, $t9, %s", target, mul));
+                    codeList.add(String.format("sll $t9, %s, %d", mul, k));
+                    codeList.add(String.format("add %s, $t9, %s", target, mul));
                 }
                 else if ((k = case2Sub(abs)) != null) {
-                    mipsList.add(String.format("sll $t9, %s, %d", mul, k));
-                    mipsList.add(String.format("sub %s, $t9, %s", target, mul));
+                    codeList.add(String.format("sll $t9, %s, %d", mul, k));
+                    codeList.add(String.format("sub %s, $t9, %s", target, mul));
                 }
                 else if (inst > 0 && (pair = case3Add(abs)) != null) {
-                    mipsList.add(String.format("sll $t9, %s, %d", mul, pair.first));
-                    mipsList.add(String.format("sll %s, %s, %d", target, mul, pair.second));
-                    mipsList.add(String.format("add %s, $t9, %s", target, target));
+                    codeList.add(String.format("sll $t9, %s, %d", mul, pair.first));
+                    codeList.add(String.format("sll %s, %s, %d", target, mul, pair.second));
+                    codeList.add(String.format("add %s, $t9, %s", target, target));
                 }
                 else if (inst > 0 && (pair = case3Sub(abs)) != null) {
-                    mipsList.add(String.format("sll $t9, %s, %d", mul, pair.first));
-                    mipsList.add(String.format("sll %s, %s, %d", target, mul, pair.second));
-                    mipsList.add(String.format("sub %s, $t9, %s", target, target));
+                    codeList.add(String.format("sll $t9, %s, %d", mul, pair.first));
+                    codeList.add(String.format("sll %s, %s, %d", target, mul, pair.second));
+                    codeList.add(String.format("sub %s, $t9, %s", target, target));
                 }
-                else return;
+                else continue;
 
-                if (inst < 0) mipsList.add(String.format("sub %s, $zero, %s", target, target));
+                if (inst < 0) codeList.add(String.format("sub %s, $zero, %s", target, target));
 
-                for (int i = mipsList.size() - 1; i >= 0; i--) {
-                    p.insertNext(new Mips(mipsList.get(i)));
-                }
-                p.delete();
+                mipsList.remove(i--);
+                List<Mips> mulMipsList = codeList.stream()
+                        .map(str -> new Mips(str))
+                        .collect(Collectors.toList());
+                mipsList.addAll(i, mulMipsList);
             }
-        });
+        }
     }
 
     // 2^k? 返回 k
@@ -101,7 +103,7 @@ public class WeakenMult {
     private static Pair<Integer, Integer> case3Sub(int num) {
         int shift = 0;
         while ((1L << shift) < num) shift++;
-        Integer r = case1((int)((1L << shift) - num));
+        Integer r = case1((int) ((1L << shift) - num));
         if (r != null) return new Pair<>(shift, r);
         else return null;
     }

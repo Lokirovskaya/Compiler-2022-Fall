@@ -16,7 +16,7 @@ import static lexer.Token.TokenType.*;
 import static parser.Nonterminal.NonterminalType.*;
 
 public class Generator {
-    private final InterCode inter = new InterCode();
+    private final List<Quaternion> inter = new ArrayList<>();
     private final TreeNode syntaxTreeRoot;
     private final Map<Token, Symbol> identSymbolMap;
     private int regIdx = 1;
@@ -28,7 +28,7 @@ public class Generator {
         this.identSymbolMap = identSymbolMap;
     }
 
-    public InterCode generate() {
+    public List<Quaternion> generate() {
         COMPILE_UNIT(syntaxTreeRoot);
         return inter;
     }
@@ -42,7 +42,7 @@ public class Generator {
     }
 
     private void newQuater(Quaternion.OperatorType op, VirtualReg target, Operand x1, Operand x2, Label label) {
-        inter.addLast(new Quaternion(op, target, x1, x2, label));
+        inter.add(new Quaternion(op, target, x1, x2, label));
     }
 
     private Symbol.Var getVar(Token varIdent) {
@@ -185,7 +185,7 @@ public class Generator {
             }
         }
 
-        if (alloc != null) inter.addLast(alloc);
+        if (alloc != null) inter.add(alloc);
     }
 
     // InitVal → Exp | '{' [ InitVal { ',' InitVal } ] '}'
@@ -216,14 +216,14 @@ public class Generator {
         if (def.isType(_MAIN_FUNCTION_DEFINE_)) {
             funcDefQuater = new Quaternion(OperatorType.FUNC, null, null, null, new Label("main"));
             funcDefQuater.list = new ArrayList<>();
-            inter.addLast(funcDefQuater);
+            inter.add(funcDefQuater);
         }
         else {
             // FuncDef → FuncType Ident '(' [FuncFParams] ')' Block
             Symbol.Function func = getFunc((Token) def.child(1));
             funcDefQuater = new Quaternion(OperatorType.FUNC, null, null, null, new Label(func.name));
             funcDefQuater.list = new ArrayList<>();
-            inter.addLast(funcDefQuater);
+            inter.add(funcDefQuater);
 
             if (def.child(3).isType(_FUNCTION_DEFINE_PARAM_LIST_)) {
                 for (TreeNode p : ((Nonterminal) def.child(3)).children) {
@@ -470,7 +470,7 @@ public class Generator {
             }
             Quaternion call = new Quaternion(OperatorType.CALL, null, null, null, new Label(func.name));
             call.list = paramList;
-            inter.addLast(call);
+            inter.add(call);
             if (!func.isVoid) {
                 VirtualReg ans = newReg();
                 newQuater(OperatorType.GET_RETURN, ans, null, null, null);

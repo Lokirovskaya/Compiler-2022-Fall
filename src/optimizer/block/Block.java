@@ -1,16 +1,14 @@
 package optimizer.block;
 
-import intercode.InterCode;
 import intercode.Label;
 import intercode.Operand;
+import intercode.Quaternion;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class Block {
     public Block next, jumpNext;
-    public InterCode blockInter = new InterCode();
+    public List<Quaternion> blockInter = new ArrayList<>();
     public Label jumpNextLabel;
     // 可达性分析
     public boolean isReachable;

@@ -1,6 +1,6 @@
 package optimizer.register;
 
-import intercode.InterCode;
+import intercode.Quaternion;
 import optimizer.block.Block;
 import optimizer.block.FuncBlocks;
 import optimizer.block.SplitBlock;
@@ -15,11 +15,11 @@ import static intercode.Quaternion.OperatorType.*;
 public class RegAlloc {
     private static final boolean DEBUG = true;
 
-    public static void run(InterCode inter) {
+    public static void run(List<Quaternion> inter) {
         // 为中间代码编号
         Wrap<Integer> id = new Wrap<>(1);
-        inter.forEachItem(quater -> {
-            quater.id = id.get();
+        inter.forEach(q -> {
+            q.id = id.get();
             id.set(id.get() + 1);
         });
 
@@ -89,12 +89,12 @@ public class RegAlloc {
             result.forEach(interval -> interval.vreg.realReg = interval.realReg);
             // 填写 Quaternion.activeRegSet 字段
             for (Block block : funcBlocks.blockList) {
-                block.blockInter.forEachItem(quater -> {
-                    if (quater.op == CALL) {
-                        quater.activeRegSet = new HashSet<>();
+                block.blockInter.forEach(q -> {
+                    if (q.op == CALL) {
+                        q.activeRegSet = new HashSet<>();
                         for (Interval interval : result) {
-                            if (interval.realReg >= 0 && interval.start() <= quater.id && quater.id < interval.end()) {
-                                quater.activeRegSet.add(interval.realReg);
+                            if (interval.realReg >= 0 && interval.start() <= q.id && q.id < interval.end()) {
+                                q.activeRegSet.add(interval.realReg);
                             }
                         }
                     }
@@ -107,9 +107,7 @@ public class RegAlloc {
         }
 
         // 删除无用赋值
-        inter.forEachNode(p -> {
-            if (p.get().isUselessAssign) p.delete();
-        });
+        inter.removeIf(q -> q.isUselessAssign);
     }
 
     private static class RegPool {

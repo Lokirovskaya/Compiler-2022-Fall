@@ -1,11 +1,13 @@
 package optimizer;
 
-import intercode.InterCode;
+import intercode.Quaternion;
 import optimizer.peephole.*;
 import optimizer.register.RegAlloc;
 
+import java.util.List;
+
 public class Optimizer {
-    public static void optimize(InterCode inter) {
+    public static void optimize(List<Quaternion> inter) {
         ReduceBranch.run(inter);
         ClearLabel.run(inter);
         RearrangeInst.run(inter);

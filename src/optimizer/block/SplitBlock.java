@@ -1,6 +1,5 @@
 package optimizer.block;
 
-import intercode.InterCode;
 import intercode.Quaternion;
 import util.Wrap;
 
@@ -13,7 +12,7 @@ public class SplitBlock {
     // 返回所有函数各自的基本块 root
     // label 是入口语句
     // goto, branch 的下一条语句是入口语句
-    public static List<FuncBlocks> split(InterCode inter) {
+    public static List<FuncBlocks> split(List<Quaternion> inter) {
         List<FuncBlocks> funcBlocksList = new ArrayList<>();
 
         Wrap<Block> curBlock = new Wrap<>(null);
@@ -25,22 +24,22 @@ public class SplitBlock {
         curBlock.set(globalBlock);
         curFuncBlocks.get().root = globalBlock;
 
-        inter.forEachNode(p -> {
-            // 新函数开始
-            if (p.get().op == FUNC) {
+        for (int i = 0; i < inter.size(); i++) {
+            Quaternion q = inter.get(i);// 新函数开始
+            if (q.op == FUNC) {
                 funcBlocksList.add(curFuncBlocks.get()); // 结算上一个
                 curFuncBlocks.set(new FuncBlocks());
-                curFuncBlocks.get().funcName = p.get().label.name;
+                curFuncBlocks.get().funcName = q.label.name;
                 Block newBlock = new Block();
                 curBlock.set(newBlock);
                 curFuncBlocks.get().root = newBlock;
             }
 
-            curBlock.get().blockInter.addLast(p.get());
+            curBlock.get().blockInter.add(q);
 
             // 如果有 label，在表中记录 label 对应的 block
-            if (p.get().op == LABEL) {
-                Block.labelBlockMap.put(p.get().label, curBlock.get());
+            if (q.op == LABEL) {
+                Block.labelBlockMap.put(q.label, curBlock.get());
             }
 
             // 当前 Block 结束：
@@ -48,27 +47,27 @@ public class SplitBlock {
             // 2. 下一条语句是 label
             // 3. 下一条语句是 func，或没有下一条语句
             // 4. 这条语句是 return
-            if (isBranch(p.get().op)) {
+            if (isBranch(q.op)) {
                 curFuncBlocks.get().blockList.add(curBlock.get());
                 curBlock.get().next = new Block();
-                curBlock.get().jumpNextLabel = p.get().label;
+                curBlock.get().jumpNextLabel = q.label;
                 curBlock.set(curBlock.get().next);
             }
-            else if (p.get().op == GOTO) {
+            else if (q.op == GOTO) {
                 curFuncBlocks.get().blockList.add(curBlock.get());
-                curBlock.get().jumpNextLabel = p.get().label;
+                curBlock.get().jumpNextLabel = q.label;
                 curBlock.set(new Block());
             }
-            else if (p.get(1) != null && p.get(1).op == LABEL) {
+            else if (i + 1 < inter.size() && inter.get(i + 1).op == LABEL) {
                 curFuncBlocks.get().blockList.add(curBlock.get());
                 curBlock.get().next = new Block();
                 curBlock.set(curBlock.get().next);
             }
-            else if (p.get().op == RETURN || p.get(1) == null || p.get(1).op == FUNC) {
+            else if (q.op == RETURN || i + 1 >= inter.size() || inter.get(i + 1).op == FUNC) {
                 curFuncBlocks.get().blockList.add(curBlock.get());
                 curBlock.set(new Block());
             }
-        });
+        }
         // 结算 main
         if (curFuncBlocks.get() != null) {
             funcBlocksList.add(curFuncBlocks.get());

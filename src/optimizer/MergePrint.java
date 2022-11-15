@@ -1,31 +1,33 @@
 package optimizer;
 
-import intercode.InterCode;
 import intercode.Label;
 import intercode.Operand.InstNumber;
 import intercode.Quaternion;
 
+import java.util.List;
+
 import static intercode.Quaternion.OperatorType.*;
 
 public class MergePrint {
-    static void run(InterCode inter) {
+    static void run(List<Quaternion> inter) {
         StringBuilder buff = new StringBuilder();
-        inter.forEachNode(p -> {
-            String nowStr = getPrintString(p.get());
-            String nextStr = p.get(1) == null ? null : getPrintString(p.get(1));
+        for (int i = 0; i < inter.size(); i++) {
+            Quaternion q = inter.get(i);
+            String nowStr = getPrintString(q);
+            String nextStr = i + 1 < inter.size() ? getPrintString(inter.get(i + 1)) : null;
             if (nowStr != null && nextStr != null) {
                 buff.append(nowStr);
                 while (nextStr != null) {
                     buff.append(nextStr);
-                    p.delete(1);
-                    nextStr = p.get(1) == null ? null : getPrintString(p.get(1));
+                    inter.remove(i + 1);
+                    nextStr = i + 1 < inter.size() ? getPrintString(inter.get(i + 1)) : null;
                 }
-                p.get().op = PRINT_STR;
-                p.get().x1 = null;
-                p.get().label = new Label(buff.toString());
+                q.op = PRINT_STR;
+                q.x1 = null;
+                q.label = new Label(buff.toString());
                 buff.delete(0, buff.length());
             }
-        });
+        }
     }
 
     private static String getPrintString(Quaternion print) {
