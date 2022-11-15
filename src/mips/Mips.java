@@ -11,7 +11,7 @@ public class Mips {
     private static final Pattern pattern = Pattern.compile(splitRegex);
 
     public Mips(String code) {
-        this.code = code;
+        this.code = code.trim();
         Matcher matcher = pattern.matcher(code);
         while (matcher.find()) {
             if (args[0] == null) args[0] = matcher.group();

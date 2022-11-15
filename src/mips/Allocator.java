@@ -3,7 +3,6 @@ package mips;
 import intercode.Operand.InstNumber;
 import intercode.Operand.VirtualReg;
 import intercode.Quaternion;
-import util.Wrap;
 
 import java.util.HashMap;
 import java.util.List;
@@ -18,23 +17,24 @@ class Allocator {
     static Map<String, FunctionInfo> alloc(List<Quaternion> inter) {
         Map<String, FunctionInfo> funcInfoMap = new HashMap<>();
 
-        Wrap<FunctionInfo> curFuncInfo = new Wrap<>(new FunctionInfo());
-        curFuncInfo.get().name = ".global";
-        Wrap<Integer> curOffset = new Wrap<>(0); // 0($sp) 的位置保留给 $ra
-        Wrap<Integer> curGlobalOffset = new Wrap<>(-4); // $gp 空间，不需要留 $ra
-        inter.forEach(q -> {
+        FunctionInfo curFuncInfo = new FunctionInfo();
+        curFuncInfo.name = ".global";
+        int curOffset = 0; // 0($sp) 的位置保留给 $ra
+        int curGlobalOffset = -4; // $gp 空间，不需要留 $ra
+
+        for (Quaternion q : inter) {
             // 函数
             // 遇到下一个 func，结算当前 func
             if (q.op == FUNC) {
                 // 结算旧函数
-                curFuncInfo.get().frameSize = curOffset.get() + 4;
-                funcInfoMap.put(curFuncInfo.get().name, curFuncInfo.get());
+                curFuncInfo.frameSize = curOffset + 4;
+                funcInfoMap.put(curFuncInfo.name, curFuncInfo);
                 // 新函数
-                curFuncInfo.set(new FunctionInfo());
-                curFuncInfo.get().name = q.label.name;
+                curFuncInfo = new FunctionInfo();
+                curFuncInfo.name = q.label.name;
                 // 预留参数的位置
                 int stackParamCount = q.list.size() > 4 ? q.list.size() - 4 : 0;
-                curOffset.set(stackParamCount * 4);
+                curOffset = stackParamCount * 4;
             }
 
             // 变量
@@ -44,18 +44,18 @@ class Allocator {
                 if (vreg.realReg < 0) {
                     if (vreg.stackOffset < 0) {
                         if (vreg.isGlobal) {
-                            curGlobalOffset.set(curGlobalOffset.get() + 4);
-                            vreg.stackOffset = curGlobalOffset.get();
+                            curGlobalOffset += 4;
+                            vreg.stackOffset = curGlobalOffset;
                         }
                         else {
-                            curOffset.set(curOffset.get() + 4);
-                            vreg.stackOffset = curOffset.get();
+                            curOffset += 4;
+                            vreg.stackOffset = curOffset;
                         }
                     }
                 }
                 // 否则，记录寄存器到函数的寄存器表中
                 else {
-                    curFuncInfo.get().regUseSet.add(vreg.realReg);
+                    curFuncInfo.regUseSet.add(vreg.realReg);
                 }
             }
             // 分配数组空间，位置紧邻数组地址
@@ -63,25 +63,25 @@ class Allocator {
                 assert q.x1 instanceof InstNumber;
                 int arraySize = ((InstNumber) q.x1).number * 4;
                 if (q.target.isGlobal) {
-                    curGlobalOffset.set(curGlobalOffset.get() + 4);
-                    q.target.stackOffset = curGlobalOffset.get();
-                    curGlobalOffset.set(curGlobalOffset.get() + arraySize);
+                    curGlobalOffset += 4;
+                    q.target.stackOffset = curGlobalOffset;
+                    curGlobalOffset += arraySize;
                 }
                 else {
-                    curOffset.set(curOffset.get() + 4);
-                    q.target.stackOffset = curOffset.get();
-                    curOffset.set(curOffset.get() + arraySize);
+                    curOffset += 4;
+                    q.target.stackOffset = curOffset;
+                    curOffset += arraySize;
                 }
             }
             // 函数信息
             // 记录参数对应的 vreg
             else if (q.op == CALL)
-                curFuncInfo.get().isPureFunc = false;
+                curFuncInfo.isPureFunc = false;
             else if (q.op == FUNC)
-                curFuncInfo.get().paramList = q.list.stream().map(o -> (VirtualReg) o).collect(Collectors.toList());
-        });
-        curFuncInfo.get().frameSize = curOffset.get() + 4;
-        funcInfoMap.put(curFuncInfo.get().name, curFuncInfo.get());
+                curFuncInfo.paramList = q.list.stream().map(o -> (VirtualReg) o).collect(Collectors.toList());
+        }
+        curFuncInfo.frameSize = curOffset + 4;
+        funcInfoMap.put(curFuncInfo.name, curFuncInfo);
         return funcInfoMap;
     }
 }

@@ -1,20 +1,18 @@
 package mips.mipsoptimizer;
 
 import mips.Mips;
-import util.Wrap;
 
 import java.util.List;
 
 public class PeepHole {
     public static void run(List<Mips> mipsList) {
-        Wrap<Boolean> inText = new Wrap<>(false);
+        boolean inTextSegment = false;
         for (int i = 0; i < mipsList.size(); i++) {
-
             if (mipsList.get(i).code.equals(".text")) {
-                inText.set(true);
+                inTextSegment = true;
                 continue;
             }
-            if (!inText.get()) continue;
+            if (!inTextSegment) continue;
 
             String[] args = mipsList.get(i).args;
             // 优化 lw+sw 操作
@@ -28,7 +26,7 @@ public class PeepHole {
                 }
                 if (args[0].equals("sw") && mipsList.get(i + 1).args[0].equals("lw")) {
                     if (args[2].equals(mipsList.get(i + 1).args[2]) && args[3].equals(mipsList.get(i + 1).args[3])) {
-                        mipsList.set(1, new Mips(String.format("move %s, %s", mipsList.get(i + 1).args[1], args[1])));
+                        mipsList.set(i + 1, new Mips(String.format("move %s, %s", mipsList.get(i + 1).args[1], args[1])));
                     }
                 }
             }

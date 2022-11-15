@@ -13,7 +13,6 @@ public class Optimizer {
         RearrangeInst.run(inter);
         MergeCondToBranch.run(inter);
         ClearDeadCode.run(inter);
-        ReduceBranch.run(inter);
         ClearLabel.run(inter);
 
         MergePrint.run(inter);

@@ -4,7 +4,6 @@ import intercode.Quaternion;
 import optimizer.block.Block;
 import optimizer.block.FuncBlocks;
 import optimizer.block.SplitBlock;
-import util.Wrap;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -17,11 +16,10 @@ public class RegAlloc {
 
     public static void run(List<Quaternion> inter) {
         // 为中间代码编号
-        Wrap<Integer> id = new Wrap<>(1);
-        inter.forEach(q -> {
-            q.id = id.get();
-            id.set(id.get() + 1);
-        });
+        int id = 1;
+        for (Quaternion q : inter) {
+            q.id = id++;
+        }
 
         for (FuncBlocks funcBlocks : SplitBlock.split(inter)) {
             List<Interval> intervalList = LivenessAnalysis.run(funcBlocks);

@@ -7,7 +7,6 @@ import intercode.Operand.VirtualReg;
 import intercode.Quaternion;
 import mips.mipsoptimizer.PeepHole;
 import mips.mipsoptimizer.WeakenMult;
-import util.Wrap;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -30,7 +29,7 @@ public class MipsCoder {
         funcInfoMap.values().forEach(System.out::println);
         generate();
         PeepHole.run(mipsList);
-        WeakenMult.run(mipsList);
+//        WeakenMult.run(mipsList);
     }
 
     public void output(String filename) throws IOException {
@@ -123,14 +122,14 @@ public class MipsCoder {
 
     private void generate() {
         addMips(".data");
-        Wrap<Integer> stringIdx = new Wrap<>(1);
+        int stringIdx = 1;
         for (Quaternion q : inter) {
             switch (q.op) {
                 case PRINT_STR:
                     // 将 print_str 的 label 改为 str_%d
-                    addMips("str_%d: .asciiz \"%s\"", stringIdx.get(), q.label);
-                    q.label = new Label("str_" + stringIdx.get());
-                    stringIdx.set(stringIdx.get() + 1);
+                    addMips("str_%d: .asciiz \"%s\"", stringIdx, q.label);
+                    q.label = new Label("str_" + stringIdx);
+                    stringIdx++;
                     break;
                 case GLOBAL_ALLOC: {
                     int size = ((InstNumber) q.x1).number;
