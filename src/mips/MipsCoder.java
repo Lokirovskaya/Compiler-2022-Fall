@@ -158,7 +158,6 @@ public class MipsCoder {
         for (Quaternion q : inter) {
             switch (q.op) {
                 case FUNC: {
-                    addMips("jr $ra");
                     addMips("func_%s:", q.label.name);
                     for (int i = 0; i < q.list.size(); i++) {
                         VirtualReg param = (VirtualReg) q.list.get(i);
@@ -490,6 +489,10 @@ public class MipsCoder {
                         addRegMips("bgez @rx1, @label", q);
                     else
                         addRegMips("bge @rx1, @x2, @label", q);
+                    break;
+                case EXIT:
+                    addMips("li $v0, 10");
+                    addMips("syscall");
                     break;
                 case GETINT:
                     addMips("li $v0, 5");

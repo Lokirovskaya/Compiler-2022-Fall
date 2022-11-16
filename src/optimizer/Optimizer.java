@@ -8,6 +8,8 @@ import java.util.List;
 
 public class Optimizer {
     public static void optimize(List<Quaternion> inter) {
+        MoveMainFunc.run(inter);
+
         ReduceBranch.run(inter);
         ClearLabel.run(inter);
 
@@ -21,7 +23,7 @@ public class Optimizer {
         ClearLabel.run(inter);
 
         MergePrint.run(inter);
-        DeleteUselessALU.run(inter);
+        WeakenRedundantCalc.run(inter);
 
         RegAlloc.run(inter);
     }

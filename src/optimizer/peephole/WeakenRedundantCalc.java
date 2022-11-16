@@ -9,7 +9,7 @@ import java.util.List;
 
 import static intercode.Quaternion.OperatorType.*;
 
-public class DeleteUselessALU {
+public class WeakenRedundantCalc {
     public static void run(List<Quaternion> inter) {
         for (int i = 0; i < inter.size(); i++) {
             Quaternion q = inter.get(i);
@@ -18,7 +18,7 @@ public class DeleteUselessALU {
                 if (isZero(q.x1))
                     inter.set(i, new Quaternion(SET, q.target, q.x2, null, null));
                 else if (isZero(q.x2))
-                     inter.set(i, new Quaternion(SET, q.target, q.x1, null, null));
+                    inter.set(i, new Quaternion(SET, q.target, q.x1, null, null));
             }
             // 0-x -> neg, x-0 -> set
             if (q.op == SUB) {

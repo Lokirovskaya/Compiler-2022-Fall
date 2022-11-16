@@ -78,8 +78,7 @@ public class Quaternion {
         LABEL, ALLOC, GLOBAL_ALLOC,
         GETINT, PRINT_STR, PRINT_INT, PRINT_CHAR,
         // 优化中会出现的操作码
-        IF_NOT, IF_EQ, IF_NOT_EQ, IF_LESS, IF_LESS_EQ, IF_GREATER, IF_GREATER_EQ,
-        SHIFT_LEFT, SHIFT_RIGHT
+        EXIT, IF_NOT, IF_EQ, IF_NOT_EQ, IF_LESS, IF_LESS_EQ, IF_GREATER, IF_GREATER_EQ,
     }
 
     @Override
@@ -90,8 +89,6 @@ public class Quaternion {
         else if (op == MULT) return String.format("%s = %s * %s", target, x1, x2);
         else if (op == DIV) return String.format("%s = %s / %s", target, x1, x2);
         else if (op == MOD) return String.format("%s = %s %% %s", target, x1, x2);
-        else if (op == SHIFT_LEFT) return String.format("%s = %s << %s", target, x1, x2);
-        else if (op == SHIFT_RIGHT) return String.format("%s = %s >> %s", target, x1, x2);
         else if (op == NEG) return String.format("%s = -%s", target, x1);
         else if (op == GET_ARRAY) return String.format("%s = %s[%s]", target, x1, x2);
         else if (op == SET_ARRAY) return String.format("%s[%s] = %s", target, x1, x2);
@@ -122,6 +119,7 @@ public class Quaternion {
         else if (op == LABEL) return String.format("%s:", label);
         else if (op == GOTO) return String.format("goto %s", label);
         else if (op == RETURN) return "return";
+        else if (op == EXIT) return "exit";
         else if (op == SET_RETURN) return String.format("RET = %s", x1);
         else if (op == GET_RETURN) return String.format("%s = RET", target);
         else if (op == ENTER_MAIN) return "enter_main";

@@ -233,6 +233,7 @@ public class Generator {
             }
         }
         BLOCK(def.child(def.children.size() - 1));
+        newQuater(OperatorType.RETURN, null, null, null, null);
     }
 
     private void FUNCTION_DEFINE_PARAM(Nonterminal paramDef, Quaternion funcDefQuater) {
