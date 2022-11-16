@@ -27,40 +27,41 @@ public class WeakenMult {
                 }
 
                 List<String> codeList = new ArrayList<>();
-                String target = args[1], mul = args[2];
+                String targetReg = args[1], mulReg = args[2];
                 Integer k;
                 Pair<Integer, Integer> pair; // (k, r)
                 int abs = Math.abs(inst);
+
                 if ((k = case1(abs)) != null) {
-                    codeList.add(String.format("sll %s, %s, %d", target, mul, k));
+                    codeList.add(String.format("sll %s, %s, %d", targetReg, mulReg, k));
                 }
                 else if ((k = case2Add(abs)) != null) {
-                    codeList.add(String.format("sll $t9, %s, %d", mul, k));
-                    codeList.add(String.format("add %s, $t9, %s", target, mul));
+                    codeList.add(String.format("sll $t9, %s, %d", mulReg, k));
+                    codeList.add(String.format("add %s, $t9, %s", targetReg, mulReg));
                 }
                 else if ((k = case2Sub(abs)) != null) {
-                    codeList.add(String.format("sll $t9, %s, %d", mul, k));
-                    codeList.add(String.format("sub %s, $t9, %s", target, mul));
+                    codeList.add(String.format("sll $t9, %s, %d", mulReg, k));
+                    codeList.add(String.format("sub %s, $t9, %s", targetReg, mulReg));
                 }
                 else if (inst > 0 && (pair = case3Add(abs)) != null) {
-                    codeList.add(String.format("sll $t9, %s, %d", mul, pair.first));
-                    codeList.add(String.format("sll %s, %s, %d", target, mul, pair.second));
-                    codeList.add(String.format("add %s, $t9, %s", target, target));
+                    codeList.add(String.format("sll $t9, %s, %d", mulReg, pair.first));
+                    codeList.add(String.format("sll %s, %s, %d", targetReg, mulReg, pair.second));
+                    codeList.add(String.format("add %s, $t9, %s", targetReg, targetReg));
                 }
                 else if (inst > 0 && (pair = case3Sub(abs)) != null) {
-                    codeList.add(String.format("sll $t9, %s, %d", mul, pair.first));
-                    codeList.add(String.format("sll %s, %s, %d", target, mul, pair.second));
-                    codeList.add(String.format("sub %s, $t9, %s", target, target));
+                    codeList.add(String.format("sll $t9, %s, %d", mulReg, pair.first));
+                    codeList.add(String.format("sll %s, %s, %d", targetReg, mulReg, pair.second));
+                    codeList.add(String.format("sub %s, $t9, %s", targetReg, targetReg));
                 }
                 else continue;
 
-                if (inst < 0) codeList.add(String.format("sub %s, $zero, %s", target, target));
+                if (inst < 0) codeList.add(String.format("sub %s, $zero, %s", targetReg, targetReg));
 
                 mipsList.remove(i--);
                 List<Mips> mulMipsList = codeList.stream()
                         .map(str -> new Mips(str))
                         .collect(Collectors.toList());
-                mipsList.addAll(i, mulMipsList);
+                mipsList.addAll(i + 1, mulMipsList);
             }
         }
     }
@@ -109,12 +110,6 @@ public class WeakenMult {
     }
 
     private static boolean isNumber(String str) {
-        try {
-            Integer.parseInt(str);
-            return true;
-        }
-        catch (NumberFormatException e) {
-            return false;
-        }
+        return str.matches("^[+-]?[0-9]+$");
     }
 }

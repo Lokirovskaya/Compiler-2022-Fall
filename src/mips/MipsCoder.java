@@ -6,6 +6,7 @@ import intercode.Operand.InstNumber;
 import intercode.Operand.VirtualReg;
 import intercode.Quaternion;
 import mips.mipsoptimizer.PeepHole;
+import mips.mipsoptimizer.WeakenDiv;
 import mips.mipsoptimizer.WeakenMult;
 
 import java.io.IOException;
@@ -29,7 +30,8 @@ public class MipsCoder {
         funcInfoMap.values().forEach(System.out::println);
         generate();
         PeepHole.run(mipsList);
-//        WeakenMult.run(mipsList);
+        WeakenDiv.run(mipsList);
+        WeakenMult.run(mipsList);
     }
 
     public void output(String filename) throws IOException {
