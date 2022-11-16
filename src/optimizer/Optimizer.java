@@ -10,8 +10,13 @@ public class Optimizer {
     public static void optimize(List<Quaternion> inter) {
         ReduceBranch.run(inter);
         ClearLabel.run(inter);
+
         RearrangeInst.run(inter);
         MergeCondToBranch.run(inter);
+
+        ClearUnusedVar.run(inter);
+        ClearUnusedVar.run(inter);
+
         ClearDeadCode.run(inter);
         ClearLabel.run(inter);
 
