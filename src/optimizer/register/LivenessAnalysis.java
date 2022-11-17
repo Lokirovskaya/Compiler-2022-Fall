@@ -83,9 +83,15 @@ class LivenessAnalysis {
                 for (VirtualReg defVreg : quater.getDefVregList()) {
                     if (needAlloc(defVreg)) {
                         List<Pair<Integer, Integer>> ranges = getInterval.apply(defVreg).rangeList;
-                        if (ranges.size() > 0)
-                            ranges.get(0).first = quater.id;
+                        if (ranges.size() > 0) {
+                            // 使得 def 尽量靠后
+                            if (ranges.get(0).first <= quater.id)
+                                ranges.get(0).first = quater.id;
+                                // 基本块内更早的 def，标记为无用
+                            else quater.isUselessAssign = true;
+                        }
                         else {
+                            // 如果当前基本块内没有 use，标记 def 为无用
                             if (quater.op != Quaternion.OperatorType.FUNC)
                                 quater.isUselessAssign = true;
                         }
