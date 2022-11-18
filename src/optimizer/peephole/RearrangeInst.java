@@ -16,7 +16,7 @@ public class RearrangeInst {
             Quaternion q = inter.get(i);
             if (q.x1 instanceof InstNumber && q.x2 instanceof VirtualReg) {
                 Quaternion.OperatorType op = q.op;
-                if (op == ADD || op == MULT || op == EQ || op == NOT_EQ || op == GET_ARRAY) {
+                if (op == ADD || op == MULT || op == EQ || op == NOT_EQ || op == IF_EQ || op == IF_NOT_EQ) {
                     swapX1X2(q);
                 }
                 else if (op == LESS) {
@@ -35,8 +35,25 @@ public class RearrangeInst {
                     swapX1X2(q);
                     q.op = LESS_EQ;
                 }
+                else if (op == IF_LESS) {
+                    swapX1X2(q);
+                    q.op = IF_GREATER;
+                }
+                else if (op == IF_GREATER) {
+                    swapX1X2(q);
+                    q.op = IF_LESS;
+                }
+                else if (op == IF_LESS_EQ) {
+                    swapX1X2(q);
+                    q.op = IF_GREATER_EQ;
+                }
+                else if (op == IF_GREATER_EQ) {
+                    swapX1X2(q);
+                    q.op = IF_LESS_EQ;
+                }
             }
-            else if (q.x1 instanceof InstNumber && q.x2 == null) {
+
+            if (q.x1 instanceof InstNumber && q.x2 == null) {
                 Quaternion.OperatorType op = q.op;
                 int x1 = ((InstNumber) q.x1).number;
                 if (op == IF) {

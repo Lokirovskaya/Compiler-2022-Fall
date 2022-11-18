@@ -20,6 +20,7 @@ public class ClearDeadCode {
                 }
             }
         }
+        ClearLabel.run(inter);
     }
 
     private static void runFuncBlocks(Block block) {

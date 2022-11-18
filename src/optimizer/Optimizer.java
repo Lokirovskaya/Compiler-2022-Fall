@@ -1,6 +1,7 @@
 package optimizer;
 
 import intercode.Quaternion;
+import optimizer.constant.ConstPropagationBlock;
 import optimizer.misc.*;
 import optimizer.peephole.*;
 import optimizer.register.*;
@@ -12,7 +13,6 @@ public class Optimizer {
         MoveMainFunc.run(inter);
 
         ReduceBranch.run(inter);
-        ClearLabel.run(inter);
 
         RearrangeInst.run(inter);
         MergeCondToBranch.run(inter);
@@ -21,7 +21,13 @@ public class Optimizer {
         ClearUnusedVar.run(inter);
 
         ClearDeadCode.run(inter);
-        ClearLabel.run(inter);
+
+        for (int i = 0; i < 2; i++) {
+            ConstPropagationBlock.run(inter);
+            ClearDeadCode.run(inter);
+        }
+
+        ReduceBranch.run(inter);
 
         MergePrint.run(inter);
         WeakenRedundantCalc.run(inter);

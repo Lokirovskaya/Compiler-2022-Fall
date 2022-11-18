@@ -1,6 +1,7 @@
 package optimizer.peephole;
 
 import intercode.Quaternion;
+import optimizer.misc.ClearLabel;
 
 import java.util.List;
 
@@ -43,5 +44,6 @@ public class ReduceBranch {
                 inter.remove(i--);
             }
         }
+        ClearLabel.run(inter);
     }
 }
