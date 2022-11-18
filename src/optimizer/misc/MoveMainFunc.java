@@ -1,4 +1,4 @@
-package optimizer;
+package optimizer.misc;
 
 import intercode.Quaternion;
 
@@ -11,7 +11,7 @@ import static intercode.Quaternion.OperatorType.*;
 // 将 main 函数移动到 .text 正下方（移动到 enter_main 位置）
 // main 中的所有 return，换为 exit
 public class MoveMainFunc {
-    static void run(List<Quaternion> inter) {
+    public static void run(List<Quaternion> inter) {
         int mainStartIdx = -1, mainEndIdx = -1, enterMainIdx = -1;
         boolean inMainFunc = false;
         for (int i = 0; i < inter.size(); i++) {

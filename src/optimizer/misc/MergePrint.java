@@ -1,4 +1,4 @@
-package optimizer;
+package optimizer.misc;
 
 import intercode.Label;
 import intercode.Operand.InstNumber;
@@ -9,7 +9,7 @@ import java.util.List;
 import static intercode.Quaternion.OperatorType.*;
 
 public class MergePrint {
-    static void run(List<Quaternion> inter) {
+    public static void run(List<Quaternion> inter) {
         StringBuilder buff = new StringBuilder();
         for (int i = 0; i < inter.size(); i++) {
             Quaternion q = inter.get(i);

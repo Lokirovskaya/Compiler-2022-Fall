@@ -1,4 +1,4 @@
-package optimizer;
+package optimizer.misc;
 
 import intercode.Quaternion;
 import optimizer.block.Block;
@@ -8,7 +8,7 @@ import optimizer.block.SplitBlock;
 import java.util.List;
 
 public class ClearDeadCode {
-    static void run(List<Quaternion> inter) {
+    public static void run(List<Quaternion> inter) {
         List<FuncBlocks> funcBlocksList = SplitBlock.split(inter);
         funcBlocksList.forEach(func -> func.blockList.forEach(block -> block.isReachable = false));
         funcBlocksList.forEach(func -> runFuncBlocks(func.root));

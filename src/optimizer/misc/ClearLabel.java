@@ -1,4 +1,4 @@
-package optimizer;
+package optimizer.misc;
 
 import intercode.Label;
 import intercode.Quaternion;
@@ -9,8 +9,8 @@ import java.util.Set;
 
 import static intercode.Quaternion.OperatorType.*;
 
-class ClearLabel {
-    static void run(List<Quaternion> inter) {
+public class ClearLabel {
+    public static void run(List<Quaternion> inter) {
         Set<Label> labelRef = new HashSet<>();
         for (Quaternion q : inter) {
             if (q.op == GOTO || q.op == IF || q.op == IF_NOT || q.op == IF_EQ || q.op == IF_NOT_EQ

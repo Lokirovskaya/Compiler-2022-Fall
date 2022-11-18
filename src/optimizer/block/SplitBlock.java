@@ -75,6 +75,8 @@ public class SplitBlock {
                 if (block.jumpNextLabel != null) {
                     block.jumpNext = Block.labelBlockMap.get(block.jumpNextLabel);
                 }
+                if (block.next != null) block.next.parents.add(block);
+                if (block.jumpNext != null) block.jumpNext.parents.add(block);
             }
         }
         return funcBlocksList;

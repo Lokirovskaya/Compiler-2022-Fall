@@ -1,8 +1,9 @@
 package optimizer;
 
 import intercode.Quaternion;
+import optimizer.misc.*;
 import optimizer.peephole.*;
-import optimizer.register.RegAlloc;
+import optimizer.register.*;
 
 import java.util.List;
 

@@ -13,8 +13,8 @@ public class FuncBlocks {
         System.out.println("func " + funcName);
         System.out.println("root " + root);
         for (Block block : blockList) {
-            System.out.printf("this %x, next %x, jumpNext %x\n",
-                    block.hashCode(), block.next == null ? null : block.next.hashCode(), block.jumpNext == null ? null : block.jumpNext.hashCode());
+            System.out.printf("this %x, next %x, jumpNext %x, parents: %s\n",
+                    block.hashCode(), block.next == null ? null : block.next.hashCode(), block.jumpNext == null ? null : block.jumpNext.hashCode(), block.parents);
             if (block.in != null) {
                 System.out.printf("in: %s, out: %s, def: %s, use: %s\n", Arrays.toString(block.in.toArray()), Arrays.toString(block.out.toArray()), Arrays.toString(block.def.toArray()), Arrays.toString(block.use.toArray()));
             }

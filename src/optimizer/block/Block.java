@@ -8,6 +8,7 @@ import java.util.*;
 
 public class Block {
     public Block next, jumpNext;
+    public List<Block> parents = new ArrayList<>(2);
     public List<Quaternion> blockInter = new ArrayList<>();
     public Label jumpNextLabel;
     // 可达性分析
