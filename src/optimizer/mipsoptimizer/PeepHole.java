@@ -1,4 +1,4 @@
-package mips.mipsoptimizer;
+package optimizer.mipsoptimizer;
 
 import mips.Mips;
 
@@ -51,8 +51,9 @@ public class PeepHole {
                     }
                 }
             }
-            // add|sub $t, $t, 0
-            if (args[0].equals("add") || args[0].equals("sub")) {
+            // add|sub|sra|srl|sll $t,$t,0
+            if (args[0].equals("add") || args[0].equals("sub") ||
+                    args[0].equals("sra") || args[0].equals("srl") || args[0].equals("sll")) {
                 if (args[1].equals(args[2]) && isZero(args[3])) {
                     mipsList.remove(i--);
                 }

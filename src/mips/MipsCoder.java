@@ -5,9 +5,7 @@ import intercode.Operand;
 import intercode.Operand.InstNumber;
 import intercode.Operand.VirtualReg;
 import intercode.Quaternion;
-import mips.mipsoptimizer.PeepHole;
-import mips.mipsoptimizer.WeakenDiv;
-import mips.mipsoptimizer.WeakenMult;
+import optimizer.OptimizeMips;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -29,9 +27,10 @@ public class MipsCoder {
         this.funcInfoMap = Allocator.alloc(inter);
         funcInfoMap.values().forEach(System.out::println);
         generate();
-        PeepHole.run(mipsList);
-        WeakenDiv.run(mipsList);
-        WeakenMult.run(mipsList);
+    }
+
+    public void optimize() {
+        OptimizeMips.optimize(mipsList);
     }
 
     public void output(String filename) throws IOException {
@@ -214,9 +213,11 @@ public class MipsCoder {
                     int frameSize = funcInfoMap.get(callingFuncName).frameSize;
                     // 计算需要保存的活跃的寄存器
                     // 如果被调用函数是 pure 的，就只保存活跃寄存器与 callee.regUseSet 的交集
-                    assert q.activeRegSet != null;
                     Set<Integer> regToSave;
-                    if (!funcInfoMap.get(callingFuncName).isPureFunc)
+                    if (q.activeRegSet == null) {
+                        regToSave = new HashSet<>(0);
+                    }
+                    else if (!funcInfoMap.get(callingFuncName).isPureFunc)
                         regToSave = q.activeRegSet;
                     else {
                         regToSave = new HashSet<>(q.activeRegSet);
@@ -403,12 +404,22 @@ public class MipsCoder {
                     addRegMips("mul @t, @rx1, @x2", q);
                     break;
                 case DIV:
-                    addRegMips("div @rx1, @rx2", q);
-                    addRegMips("mflo @t", q);
+                    if (q.x2 instanceof InstNumber) {
+                        addRegMips("div @t, @rx1, @x2", q);
+                    }
+                    else {
+                        addRegMips("div @rx1, @rx2", q);
+                        addRegMips("mflo @t", q);
+                    }
                     break;
                 case MOD:
-                    addRegMips("div @rx1, @rx2", q);
-                    addRegMips("mfhi @t", q);
+                    if (q.x2 instanceof InstNumber) {
+                        addRegMips("rem @t, @rx1, @x2", q);
+                    }
+                    else {
+                        addRegMips("div @rx1, @rx2", q);
+                        addRegMips("mfhi @t", q);
+                    }
                     break;
                 case NEG:
                     if (q.x1 instanceof InstNumber)

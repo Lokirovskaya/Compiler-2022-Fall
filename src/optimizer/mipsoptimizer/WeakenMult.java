@@ -1,4 +1,4 @@
-package mips.mipsoptimizer;
+package optimizer.mipsoptimizer;
 
 import mips.Mips;
 import util.Pair;

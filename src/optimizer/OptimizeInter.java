@@ -8,7 +8,7 @@ import optimizer.register.*;
 
 import java.util.List;
 
-public class Optimizer {
+public class OptimizeInter {
     public static void optimize(List<Quaternion> inter) {
         MoveMainFunc.run(inter);
 

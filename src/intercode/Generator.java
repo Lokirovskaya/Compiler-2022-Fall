@@ -2,11 +2,13 @@ package intercode;
 
 import intercode.Quaternion.OperatorType;
 import lexer.Token;
+import optimizer.OptimizeInter;
 import parser.Nonterminal;
 import parser.TreeNode;
 import symbol.Symbol;
 import util.Pair;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -31,6 +33,14 @@ public class Generator {
     public List<Quaternion> generate() {
         COMPILE_UNIT(syntaxTreeRoot);
         return inter;
+    }
+
+    public void output(String filename) throws IOException {
+        ResultOutput.output(inter, filename);
+    }
+
+    public void optimize() {
+        OptimizeInter.optimize(inter);
     }
 
     private VirtualReg newReg() {

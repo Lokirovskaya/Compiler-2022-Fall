@@ -4,7 +4,6 @@ import intercode.Quaternion;
 import lexer.Lexer;
 import lexer.Token;
 import mips.MipsCoder;
-import optimizer.Optimizer;
 import parser.Parser;
 import parser.TreeNode;
 import symbol.Symbol;
@@ -28,6 +27,8 @@ public class Compiler {
         }
     }
 
+    private static final boolean OPTIMIZE_ON = true;
+
     static void compile(String code) throws IOException {
         Lexer lexer = new Lexer(code);
         List<Token> tokenList = lexer.getTokens();
@@ -49,12 +50,13 @@ public class Compiler {
 
         Generator generator = new Generator(root, identSymbolMap);
         List<Quaternion> inter = generator.generate();
-        Optimizer.optimize(inter);
+        if (OPTIMIZE_ON) generator.optimize();
 
         MipsCoder mipsCoder = new MipsCoder(inter);
         mipsCoder.generateMips();
+        if (OPTIMIZE_ON) mipsCoder.optimize();
 
-        intercode.ResultOutput.output(inter, "inter.txt");
+        generator.output("inter.txt");
         mipsCoder.output("mips.txt");
     }
 }
