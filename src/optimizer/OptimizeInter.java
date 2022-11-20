@@ -32,6 +32,8 @@ public class OptimizeInter {
         MergePrint.run(inter);
         WeakenRedundantCalc.run(inter);
 
+        FoldTempVar.run(inter);
+
         RegAlloc.run(inter);
     }
 

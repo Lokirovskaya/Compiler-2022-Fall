@@ -78,6 +78,7 @@ public class Generator {
             var.reg.tableID = var.selfTable.id;
             var.reg.isAddr = var.isArray();
             var.reg.isGlobal = (var.selfTable.id == 0);
+            var.reg.isTemp = false;
         }
         return var.reg;
     }
@@ -251,7 +252,6 @@ public class Generator {
         Token ident = (Token) paramDef.child(1);
         Symbol.Var param = getVar(ident);
         VirtualReg paramReg = getVarReg(ident);
-        paramReg.isParam = true;
         if (param.isArray()) {
             // BType Ident '[' ']' '[' ConstExp ']'
             if (param.dimension == 2)

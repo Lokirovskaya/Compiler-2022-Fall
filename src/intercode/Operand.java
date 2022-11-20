@@ -5,7 +5,7 @@ public abstract class Operand {
         public int regID;
         public int tableID;
         public boolean isAddr;
-        public boolean isParam;
+        public boolean isTemp = true; // temp vreg 是 SSA 的，若不是 temp，需要额外指定
         public boolean isGlobal;
         public String name;
         // 储存管理相关
