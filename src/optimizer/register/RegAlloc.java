@@ -105,7 +105,7 @@ public class RegAlloc {
         }
 
         // 删除无用赋值
-        inter.removeIf(q -> q.isUselessAssign);
+        inter.removeIf(q -> q.isUselessAssign && q.op != GETINT);
     }
 
     private static class RegPool {

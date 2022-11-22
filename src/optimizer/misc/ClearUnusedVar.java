@@ -12,6 +12,8 @@ public class ClearUnusedVar {
         Set<VirtualReg> vregRef = new HashSet<>();
         for (Quaternion q : inter) {
             vregRef.addAll(q.getUseVregList());
+            if (q.op == Quaternion.OperatorType.GETINT)
+                vregRef.add(q.target);
         }
         inter.removeIf(q -> q.target != null && !vregRef.contains(q.target));
     }
