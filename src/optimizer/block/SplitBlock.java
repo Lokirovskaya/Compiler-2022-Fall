@@ -82,6 +82,12 @@ public class SplitBlock {
         return funcBlocksList;
     }
 
+    public static void join(List<FuncBlocks> funcBlocksList, List<Quaternion> inter) {
+        assert inter != null;
+        inter.clear();
+        funcBlocksList.forEach(func -> func.blockList.forEach(block -> inter.addAll(block.blockInter)));
+    }
+
     private static boolean isBranch(Quaternion.OperatorType op) {
         return op == IF || op == IF_NOT || op == IF_EQ || op == IF_NOT_EQ ||
                 op == IF_LESS || op == IF_LESS_EQ || op == IF_GREATER || op == IF_GREATER_EQ;

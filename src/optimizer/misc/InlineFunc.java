@@ -55,7 +55,6 @@ public class InlineFunc {
                             }
                         }
                         List<Quaternion> inlinedCalleeInter = getInlinedCalleeInter(callee, q.list, returnVreg);
-                        System.out.println(inlinedCalleeInter);
                         // 用上述代码替换 caller 中的 call 语句
                         caller.funcInter.remove(i--);
                         caller.funcInter.addAll(i + 1, inlinedCalleeInter);

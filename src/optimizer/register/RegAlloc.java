@@ -12,7 +12,7 @@ import static intercode.Quaternion.OperatorType.*;
 
 // 寄存器分配，顺便删除无用赋值
 public class RegAlloc {
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     public static void run(List<Quaternion> inter) {
         // 为中间代码编号
@@ -22,7 +22,7 @@ public class RegAlloc {
         }
 
         for (FuncBlocks funcBlocks : SplitBlock.split(inter)) {
-            List<Interval> intervalList = LivenessAnalysis.run(funcBlocks);
+            List<Interval> intervalList = CalcIntervals.run(funcBlocks);
             if (DEBUG) {
                 System.out.println("\n========================");
                 funcBlocks.printFuncBlocks();
