@@ -20,6 +20,8 @@ public class OptimizeInter {
         ClearUnusedVar.run(inter);
         ClearUnusedVar.run(inter);
 
+        InlineFunc.run(inter);
+
         ClearDeadCode.run(inter);
 
         for (int i = 0; i < 2; i++) {

@@ -30,7 +30,8 @@ public class MoveMainFunc {
         }
         assert mainStartIdx >= 0 && mainEndIdx >= 0 && enterMainIdx >= 0;
 
-        List<Quaternion> mainFunction = new ArrayList<>(inter.subList(mainStartIdx, mainEndIdx));
+        // 排除最后添加的 return，因为 main 一定已经有一个 return
+        List<Quaternion> mainFunction = new ArrayList<>(inter.subList(mainStartIdx, mainEndIdx - 1));
         for (int i = 0; i < mainFunction.size(); i++) {
             Quaternion q = mainFunction.get(i);
             if (q.op == SET_RETURN) mainFunction.remove(i--);

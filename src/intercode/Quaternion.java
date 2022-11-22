@@ -13,6 +13,9 @@ public class Quaternion {
     public VirtualReg target;
     public Operand x1, x2;
     public Label label;
+    // alloc|global_alloc：数组初始化的 operand
+    // func：形参 vreg 表
+    // call：实参 operand 表
     public List<Operand> list;
 
     public int id = -1; // 仅寄存器分配时用

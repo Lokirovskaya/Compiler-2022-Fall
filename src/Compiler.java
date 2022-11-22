@@ -52,11 +52,12 @@ public class Compiler {
         List<Quaternion> inter = generator.generate();
         if (OPTIMIZE_ON) generator.optimize();
 
+        generator.output("inter.txt");
+
         MipsCoder mipsCoder = new MipsCoder(inter);
         mipsCoder.generateMips();
         if (OPTIMIZE_ON) mipsCoder.optimize();
 
-        generator.output("inter.txt");
         mipsCoder.output("mips.txt");
     }
 }

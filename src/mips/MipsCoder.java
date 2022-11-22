@@ -158,6 +158,10 @@ public class MipsCoder {
             switch (q.op) {
                 case FUNC: {
                     addMips("func_%s:", q.label.name);
+                    // 只有 main 函数在此开辟栈空间，其余函数都在被 call 之前开辟
+                    if (q.label.name.equals("main")) {
+                        addMips("add $sp, $sp, -%d", funcInfoMap.get("main").frameSize);
+                    }
                     for (int i = 0; i < q.list.size(); i++) {
                         VirtualReg param = (VirtualReg) q.list.get(i);
                         // 寄存器传参
@@ -273,7 +277,6 @@ public class MipsCoder {
                     break;
                 }
                 case ENTER_MAIN:
-                    addMips("add $sp, $sp, -%d", funcInfoMap.get("main").frameSize);
                     addMips("jal func_main");
                     addMips("li $v0, 10");
                     addMips("syscall");

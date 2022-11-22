@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 import static intercode.Operand.InstNumber;
 import static intercode.Operand.VirtualReg;
+import static intercode.VirtualRegFactory.newReg;
 import static lexer.Token.TokenType.*;
 import static parser.Nonterminal.NonterminalType.*;
 
@@ -21,7 +22,6 @@ public class Generator {
     private final List<Quaternion> inter = new ArrayList<>();
     private final TreeNode syntaxTreeRoot;
     private final Map<Token, Symbol> identSymbolMap;
-    private int regIdx = 1;
     private int labelIdx = 1;
     private final Stack<Pair<Label, Label>> whileLabelsList = new Stack<>();
 
@@ -31,6 +31,7 @@ public class Generator {
     }
 
     public List<Quaternion> generate() {
+        VirtualRegFactory.init();
         COMPILE_UNIT(syntaxTreeRoot);
         return inter;
     }
@@ -41,10 +42,6 @@ public class Generator {
 
     public void optimize() {
         OptimizeInter.optimize(inter);
-    }
-
-    private VirtualReg newReg() {
-        return new VirtualReg(regIdx++);
     }
 
     private Label newLabel() {
@@ -75,7 +72,6 @@ public class Generator {
         if (var.reg == null) {
             var.reg = newReg();
             var.reg.name = var.name;
-            var.reg.tableID = var.selfTable.id;
             var.reg.isAddr = var.isArray();
             var.reg.isGlobal = (var.selfTable.id == 0);
             var.reg.isTemp = false;
@@ -252,6 +248,7 @@ public class Generator {
         Token ident = (Token) paramDef.child(1);
         Symbol.Var param = getVar(ident);
         VirtualReg paramReg = getVarReg(ident);
+        paramReg.isParam = true;
         if (param.isArray()) {
             // BType Ident '[' ']' '[' ConstExp ']'
             if (param.dimension == 2)

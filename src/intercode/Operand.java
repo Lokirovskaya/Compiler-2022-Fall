@@ -1,11 +1,13 @@
 package intercode;
 
+import java.util.Objects;
+
 public abstract class Operand {
     public static class VirtualReg extends Operand {
         public int regID;
-        public int tableID;
         public boolean isAddr;
         public boolean isTemp = true; // temp vreg 是 SSA 的，若不是 temp，需要额外指定
+        public boolean isParam; // 形参？
         public boolean isGlobal;
         public String name;
         // 储存管理相关
@@ -28,6 +30,19 @@ public abstract class Operand {
             }
             return sb.toString();
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            VirtualReg that = (VirtualReg) o;
+            return regID == that.regID;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(regID);
+        }
     }
 
     public static class InstNumber extends Operand {
@@ -43,6 +58,19 @@ public abstract class Operand {
         @Override
         public String toString() {
             return String.valueOf(number);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            InstNumber that = (InstNumber) o;
+            return number == that.number && overflow == that.overflow;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(number, overflow);
         }
     }
 }
