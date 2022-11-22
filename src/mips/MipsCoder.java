@@ -511,7 +511,8 @@ public class MipsCoder {
                 case GETINT:
                     addMips("li $v0, 5");
                     addMips("syscall");
-                    addRegMips("move @t, $v0", q);
+                    if (!q.isUselessAssign)
+                        addRegMips("move @t, $v0", q);
                     break;
                 case PRINT_STR:
                     addMips("la $a0, %s", q.label);
