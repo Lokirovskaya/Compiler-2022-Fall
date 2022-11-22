@@ -347,14 +347,16 @@ public class Generator {
         }
         // 'while' '(' Cond ')' Stmt
         else if (stmt.child(0).isType(WHILE)) {
-            Label startLabel = newLabel(), trueLabel = newLabel(), falseLabel = newLabel();
-            whileLabelsList.push(new Pair<>(startLabel, falseLabel));
+            // 转换为：if (cond) { do stmt while (cond) }
+            Label startLabel = newLabel(), endLabel = newLabel(), beforeCondLabel = newLabel();
+            whileLabelsList.push(new Pair<>(beforeCondLabel, endLabel)); // 存储 continue 和 break 的跳转点
+            CONDITION((Nonterminal) stmt.child(2), startLabel, endLabel);
             newQuater(OperatorType.LABEL, null, null, null, startLabel);
-            CONDITION((Nonterminal) stmt.child(2), trueLabel, falseLabel);
-            newQuater(OperatorType.LABEL, null, null, null, trueLabel);
             STATEMENT((Nonterminal) stmt.child(4));
+            newQuater(OperatorType.LABEL, null, null, null, beforeCondLabel); // continue 的跳转点
+            CONDITION((Nonterminal) stmt.child(2), startLabel, endLabel);
             newQuater(OperatorType.GOTO, null, null, null, startLabel);
-            newQuater(OperatorType.LABEL, null, null, null, falseLabel);
+            newQuater(OperatorType.LABEL, null, null, null, endLabel); // break 的跳转点
             whileLabelsList.pop();
         }
         // 'break' ';'
