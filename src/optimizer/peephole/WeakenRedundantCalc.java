@@ -20,41 +20,47 @@ public class WeakenRedundantCalc {
                 else if (isZero(q.x2))
                     inter.set(i, new Quaternion(SET, q.target, q.x1, null, null));
             }
-            // 0-x -> neg, x-0 -> set
+            // 0-x -> neg, x-0 -> set, x-x -> set 0
             if (q.op == SUB) {
                 if (isZero(q.x1))
-                     inter.set(i, new Quaternion(NEG, q.target, q.x2, null, null));
+                    inter.set(i, new Quaternion(NEG, q.target, q.x2, null, null));
                 else if (isZero(q.x2))
-                     inter.set(i, new Quaternion(SET, q.target, q.x1, null, null));
+                    inter.set(i, new Quaternion(SET, q.target, q.x1, null, null));
+                if (q.x1.equals(q.x2))
+                    inter.set(i, new Quaternion(SET, q.target, new InstNumber(0), null, null));
             }
             // 0*x, x*0, 0/x, 0%x -> set 0
             if (q.op == MULT || q.op == DIV || q.op == MOD) {
                 // 默认不会有除 0 的情况
                 if (isZero(q.x1) || isZero(q.x2))
-                     inter.set(i, new Quaternion(SET, q.target, new InstNumber(0), null, null));
+                    inter.set(i, new Quaternion(SET, q.target, new InstNumber(0), null, null));
             }
             // 1*x, x*1 -> set x
             if (q.op == MULT) {
                 if (isOne(q.x1))
-                     inter.set(i, new Quaternion(SET, q.target, q.x2, null, null));
+                    inter.set(i, new Quaternion(SET, q.target, q.x2, null, null));
                 else if (isOne(q.x2))
-                     inter.set(i, new Quaternion(SET, q.target, q.x1, null, null));
+                    inter.set(i, new Quaternion(SET, q.target, q.x1, null, null));
                 else if (isMinusOne(q.x1))
-                     inter.set(i, new Quaternion(NEG, q.target, q.x2, null, null));
+                    inter.set(i, new Quaternion(NEG, q.target, q.x2, null, null));
                 else if (isMinusOne(q.x2))
-                     inter.set(i, new Quaternion(NEG, q.target, q.x1, null, null));
+                    inter.set(i, new Quaternion(NEG, q.target, q.x1, null, null));
             }
-            // x/1 -> set x
+            // x/1 -> set x, x/x -> set 1
             if (q.op == DIV) {
                 if (isOne(q.x2))
-                     inter.set(i, new Quaternion(SET, q.target, q.x1, null, null));
+                    inter.set(i, new Quaternion(SET, q.target, q.x1, null, null));
                 if (isMinusOne(q.x2))
-                     inter.set(i, new Quaternion(NEG, q.target, q.x1, null, null));
+                    inter.set(i, new Quaternion(NEG, q.target, q.x1, null, null));
+                if (q.x1.equals(q.x2))
+                    inter.set(i, new Quaternion(SET, q.target, new InstNumber(1), null, null));
             }
-            // x%1 -> set 0
+            // x%1 -> set 0, x%x -> set 0
             if (q.op == MOD) {
                 if (isOne(q.x2) || isMinusOne(q.x2))
-                     inter.set(i, new Quaternion(SET, q.target, new InstNumber(0), null, null));
+                    inter.set(i, new Quaternion(SET, q.target, new InstNumber(0), null, null));
+                if (q.x1.equals(q.x2))
+                    inter.set(i, new Quaternion(SET, q.target, new InstNumber(0), null, null));
             }
             // 最后处理 x <- x 的情况
             if (q.op == SET) {

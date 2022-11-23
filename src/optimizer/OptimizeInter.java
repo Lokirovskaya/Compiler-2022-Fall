@@ -17,13 +17,13 @@ public class OptimizeInter {
         RearrangeInst.run(inter);
         MergeCondToBranch.run(inter);
 
-//        ClearUnusedVar.run(inter);
-//        ClearUnusedVar.run(inter);
-        ClearUselessAssign.run(inter);
-
-        InlineFunc.run(inter);
+//        InlineFunc.run(inter);
+        ReduceBranch.run(inter);
 
         ClearDeadCode.run(inter);
+
+        ClearUselessAssign.run(inter);
+        CommonSubexpElim.run(inter);
 
         for (int i = 0; i < 2; i++) {
             ConstPropagationBlock.run(inter);
@@ -33,8 +33,6 @@ public class OptimizeInter {
         ReduceBranch.run(inter);
         MergePrint.run(inter);
         WeakenRedundantCalc.run(inter);
-
-        FoldTempVar.run(inter);
 
         ClearUselessAssign.run(inter);
 
