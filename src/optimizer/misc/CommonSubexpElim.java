@@ -37,17 +37,13 @@ public class CommonSubexpElim {
         for (int i = 0; i < inter.size(); i++) {
             Quaternion q = inter.get(i);
 
-            if (q.target != null && q.op != SET_ARRAY) {
+            if (q.target != null) {
+                // 此处不要排除 set_array 操作
                 // 如果某个 vreg 被重新赋值，它对应的旧的 calc 无效
                 calcTargetMap.values().removeIf(vreg -> vreg.equals(q.target));
                 // 如果 calc 中某个 operand 被重新赋值，那么这个 calc 无效
                 calcTargetMap.keySet().removeIf(calc -> calc.x.first.equals(q.target) || calc.x.second.equals(q.target));
             }
-
-//            // 函数内联之后，同一块数组空间数组可能会有两个 vreg 指向，因此遇到 set_array 语句，移除所有数组相关项
-//            if (q.op == SET_ARRAY) {
-//                calcTargetMap.keySet().removeIf(calc -> calc.hasArray);
-//            }
 
             // 遇到 call 时，移除可能变化的的 calc
             if (q.op == CALL) {

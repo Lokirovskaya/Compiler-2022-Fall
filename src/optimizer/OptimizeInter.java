@@ -17,7 +17,7 @@ public class OptimizeInter {
         RearrangeInst.run(inter);
         MergeCondToBranch.run(inter);
 
-//        InlineFunc.run(inter);
+        InlineFunc.run(inter);
         ReduceBranch.run(inter);
 
         ClearDeadCode.run(inter);

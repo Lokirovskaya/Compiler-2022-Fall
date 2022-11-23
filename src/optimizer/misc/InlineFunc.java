@@ -30,13 +30,13 @@ public class InlineFunc {
         String name;
         List<VirtualReg> params;
         List<Quaternion> funcInter = new ArrayList<>();
-        boolean isRecursive = false; // 递归的函数不能内联
+        boolean doNotInline = false; // 递归的函数、参数是数组的函数不能内联
     }
 
     private static void inline(List<FuncInfo> funcInfoList) {
         // 将 callee 内联进 caller
         for (FuncInfo callee : funcInfoList) {
-            if (callee.name.equals("main") || callee.isRecursive) continue;
+            if (callee.name.equals("main") || callee.doNotInline) continue;
 
             for (FuncInfo caller : funcInfoList) {
                 if (caller.name.equals(callee.name)) continue;
@@ -63,7 +63,7 @@ public class InlineFunc {
             }
         }
         // 所有非递归函数最终都被内联到 main，因此只保留 main 和递归函数
-        funcInfoList.removeIf(func -> !(func.name.equals("main") || func.isRecursive));
+        funcInfoList.removeIf(func -> !(func.name.equals("main") || func.doNotInline));
     }
 
     private static int inlineIdx = 0;
@@ -167,11 +167,17 @@ public class InlineFunc {
                 curFunc = new FuncInfo();
                 curFunc.name = q.label.name;
                 curFunc.params = q.list.stream().map(param -> (VirtualReg) param).collect(Collectors.toList());
+                for (VirtualReg param : curFunc.params) {
+                    if (param.isAddr) {
+                        curFunc.doNotInline = true;
+                        break;
+                    }
+                }
             }
             if (curFunc != null) {
                 curFunc.funcInter.add(q);
                 if (q.op == CALL && q.label.name.equals(curFunc.name))
-                    curFunc.isRecursive = true;
+                    curFunc.doNotInline = true;
             }
         }
         assert curFunc != null;
