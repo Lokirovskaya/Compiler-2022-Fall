@@ -1,21 +1,21 @@
-package optimizer.misc;
+package optimizer.inline;
 
 import intercode.Label;
 import intercode.Operand;
 import intercode.Operand.VirtualReg;
 import intercode.Quaternion;
 import intercode.VirtualRegFactory;
+import optimizer.misc.ClearLabel;
 
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static intercode.Quaternion.OperatorType.*;
 
 public class InlineFunc {
     public static void run(List<Quaternion> inter) {
-        List<Quaternion> globalInter = getGlobalInter(inter);
-        List<FuncInfo> funcInfoList = splitFunc(inter);
+        List<Quaternion> globalInter = SplitFuncInter.getGlobalInter(inter);
+        List<FuncInfo> funcInfoList = SplitFuncInter.splitFuncInter(inter);
 
         inline(funcInfoList);
 
@@ -24,13 +24,6 @@ public class InlineFunc {
         funcInfoList.forEach(f -> inter.addAll(f.funcInter));
 
         ClearLabel.run(inter);
-    }
-
-    private static class FuncInfo {
-        String name;
-        List<VirtualReg> params;
-        List<Quaternion> funcInter = new ArrayList<>();
-        boolean doNotInline = false; // 递归的函数、参数是数组的函数不能内联
     }
 
     private static void inline(List<FuncInfo> funcInfoList) {
@@ -146,42 +139,6 @@ public class InlineFunc {
         }
         result.addAll(0, setParamsQuaters);
 
-        return result;
-    }
-
-    private static List<Quaternion> getGlobalInter(List<Quaternion> inter) {
-        List<Quaternion> globalInter = new ArrayList<>();
-        for (Quaternion q : inter) {
-            if (q.op == FUNC) return globalInter;
-            globalInter.add(q);
-        }
-        return globalInter;
-    }
-
-    private static List<FuncInfo> splitFunc(List<Quaternion> inter) {
-        List<FuncInfo> result = new ArrayList<>();
-        FuncInfo curFunc = null;
-        for (Quaternion q : inter) {
-            if (q.op == FUNC) {
-                if (curFunc != null) result.add(curFunc);
-                curFunc = new FuncInfo();
-                curFunc.name = q.label.name;
-                curFunc.params = q.list.stream().map(param -> (VirtualReg) param).collect(Collectors.toList());
-                for (VirtualReg param : curFunc.params) {
-                    if (param.isAddr) {
-                        curFunc.doNotInline = true;
-                        break;
-                    }
-                }
-            }
-            if (curFunc != null) {
-                curFunc.funcInter.add(q);
-                if (q.op == CALL && q.label.name.equals(curFunc.name))
-                    curFunc.doNotInline = true;
-            }
-        }
-        assert curFunc != null;
-        result.add(curFunc);
         return result;
     }
 
