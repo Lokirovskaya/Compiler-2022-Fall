@@ -1,6 +1,5 @@
 package optimizer.misc;
 
-import intercode.Operand;
 import intercode.Operand.VirtualReg;
 import intercode.Quaternion;
 import optimizer.block.Block;
@@ -11,7 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static intercode.Quaternion.OperatorType.FUNC;
+import static intercode.Quaternion.OperatorType.*;
 
 public class CopyPropagation {
     public static void run(List<Quaternion> inter) {
@@ -33,7 +32,12 @@ public class CopyPropagation {
                 vregMap.entrySet().removeIf(e -> def.equals(e.getKey()) || def.equals(e.getValue()));
             }
 
-            if (q.op == Quaternion.OperatorType.SET) {
+            // 遇到 def，kill 掉所有涉及全局变量的寄存器
+            if (q.op == CALL) {
+                vregMap.entrySet().removeIf(e -> e.getKey().isGlobal || e.getValue().isGlobal);
+            }
+
+            if (q.op == SET) {
                 if (q.x1 instanceof VirtualReg) {
                     vregMap.put(q.target, (VirtualReg) q.x1);
                 }

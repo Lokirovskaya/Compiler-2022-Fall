@@ -1,7 +1,7 @@
 package optimizer;
 
 import intercode.Quaternion;
-import optimizer.constant.ConstPropagationBlock;
+import optimizer.constant.*;
 import optimizer.misc.*;
 import optimizer.peephole.*;
 import optimizer.register.*;

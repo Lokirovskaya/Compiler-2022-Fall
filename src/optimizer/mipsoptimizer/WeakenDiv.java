@@ -17,7 +17,7 @@ public class WeakenDiv {
             if (!(args[0].equals("div") && isNumber(args[3]))) continue;
 
             // 为避免数据冲突，请注意：
-            // 1. 写 targetReg 之后，不能再读写 divReg
+            // 1. 写 targetReg 之后，不能再读 divReg
             // 2. 不允许写 divReg
             // 3. 临时寄存器使用 $t9, 不能使用 $t8
             String targetReg = args[1];
