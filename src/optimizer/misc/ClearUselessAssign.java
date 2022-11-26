@@ -29,8 +29,7 @@ public class ClearUselessAssign {
         LivenessAnalysis.doAnalysis(funcBlocks);
 
         for (Block block : funcBlocks.blockList) {
-            assert block.out != null;
-            Set<VirtualReg> out = new HashSet<>(block.out);
+            Set<VirtualReg> out = new HashSet<>(block.livenessFlow.out);
 
             for (int i = block.blockInter.size() - 1; i >= 0; i--) {
                 Quaternion q = block.blockInter.get(i);

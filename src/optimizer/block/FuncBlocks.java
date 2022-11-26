@@ -15,8 +15,8 @@ public class FuncBlocks {
         for (Block block : blockList) {
             System.out.printf("this %x, next %x, jumpNext %x, parents: %s\n",
                     block.hashCode(), block.next == null ? null : block.next.hashCode(), block.jumpNext == null ? null : block.jumpNext.hashCode(), block.parents);
-            if (block.in != null) {
-                System.out.printf("in: %s, out: %s, def: %s, use: %s\n", Arrays.toString(block.in.toArray()), Arrays.toString(block.out.toArray()), Arrays.toString(block.def.toArray()), Arrays.toString(block.use.toArray()));
+            if (block.livenessFlow != null) {
+                System.out.printf("in: %s, out: %s, def: %s, use: %s\n", Arrays.toString(block.livenessFlow.in.toArray()), Arrays.toString(block.livenessFlow.out.toArray()), Arrays.toString(block.livenessFlow.def.toArray()), Arrays.toString(block.livenessFlow.use.toArray()));
             }
             block.blockInter.forEach(q -> System.out.println("  " + q.id + " " + q));
         }

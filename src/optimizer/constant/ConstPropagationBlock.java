@@ -43,8 +43,6 @@ public class ConstPropagationBlock {
                 }
             }
 
-//            System.out.println(vregConstMap);
-
             // 折叠常量
             ConstFolding.foldQuater(q);
 

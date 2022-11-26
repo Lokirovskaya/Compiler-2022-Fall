@@ -6,7 +6,6 @@ public abstract class Operand {
     public static class VirtualReg extends Operand {
         public int regID;
         public boolean isAddr;
-        public boolean isTemp = true; // temp vreg 是 SSA 的，若不是 temp，需要额外指定
         public boolean isParam; // 形参？
         public boolean isGlobal;
         public String name;

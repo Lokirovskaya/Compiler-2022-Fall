@@ -22,8 +22,13 @@ public class OptimizeInter {
 
         ClearDeadCode.run(inter);
 
+        CopyPropagation.run(inter);
         ClearUselessAssign.run(inter);
+
         CommonSubexpElim.run(inter);
+
+        CopyPropagation.run(inter);
+        ClearUselessAssign.run(inter);
 
         for (int i = 0; i < 2; i++) {
             ConstPropagationBlock.run(inter);

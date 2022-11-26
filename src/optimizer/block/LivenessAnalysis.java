@@ -10,22 +10,19 @@ public class LivenessAnalysis {
     public static void doAnalysis(FuncBlocks funcBlocks) {
         // 计算所有 block 的 use 和 def
         for (Block block : funcBlocks.blockList) {
-            block.use = new HashSet<>();
-            block.def = new HashSet<>();
-            block.in = new HashSet<>();
-            block.out = new HashSet<>();
+            block.livenessFlow = new Block.LivenessFlow();
 
             for (Quaternion q : block.blockInter) {
                 // use
                 for (Operand.VirtualReg useVreg : q.getUseVregList()) {
-                    if (!block.def.contains(useVreg)) {
-                        block.use.add(useVreg);
+                    if (!block.livenessFlow.def.contains(useVreg)) {
+                        block.livenessFlow.use.add(useVreg);
                     }
                 }
                 // def
                 for (Operand.VirtualReg defVreg : q.getDefVregList()) {
-                    if (!block.use.contains(defVreg)) {
-                        block.def.add(defVreg);
+                    if (!block.livenessFlow.use.contains(defVreg)) {
+                        block.livenessFlow.def.add(defVreg);
                     }
                 }
             }
@@ -36,15 +33,15 @@ public class LivenessAnalysis {
             boolean changed = false;
             for (int i = funcBlocks.blockList.size() - 1; i >= 0; i--) {
                 Block block = funcBlocks.blockList.get(i);
-                if (block.next != null) block.out.addAll(block.next.in);
-                if (block.jumpNext != null) block.out.addAll(block.jumpNext.in);
+                if (block.next != null) block.livenessFlow.out.addAll(block.next.livenessFlow.in);
+                if (block.jumpNext != null) block.livenessFlow.out.addAll(block.jumpNext.livenessFlow.in);
                 // in = use ∪ (out – def)
-                Set<Operand.VirtualReg> inAns = new HashSet<>(block.out);
-                inAns.removeAll(block.def);
-                inAns.addAll(block.use);
-                if (!inAns.equals(block.in)) {
+                Set<Operand.VirtualReg> inAns = new HashSet<>(block.livenessFlow.out);
+                inAns.removeAll(block.livenessFlow.def);
+                inAns.addAll(block.livenessFlow.use);
+                if (!inAns.equals(block.livenessFlow.in)) {
                     changed = true;
-                    block.in = inAns;
+                    block.livenessFlow.in = inAns;
                 }
             }
             if (!changed) break;

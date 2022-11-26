@@ -30,11 +30,10 @@ class CalcIntervals {
 
         for (int i = funcBlocks.blockList.size() - 1; i >= 0; i--) {
             Block block = funcBlocks.blockList.get(i);
-            assert block.out != null;
             int blockStart = block.blockInter.get(0).id;
             int blockEnd = block.blockInter.get(block.blockInter.size() - 1).id;
 
-            for (VirtualReg outVreg : block.out) {
+            for (VirtualReg outVreg : block.livenessFlow.out) {
                 getInterval.apply(outVreg).addRange(blockStart, blockEnd + 1);
             }
 

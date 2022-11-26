@@ -74,7 +74,6 @@ public class Generator {
             var.reg.name = var.name;
             var.reg.isAddr = var.isArray();
             var.reg.isGlobal = (var.selfTable.id == 0);
-            var.reg.isTemp = false;
         }
         return var.reg;
     }
