@@ -9,6 +9,18 @@ public class FuncBlocks {
     public Block root;
     public List<Block> blockList = new ArrayList<>();
 
+    public void doLivenessAnalysis() {
+        LivenessAnalysis.doAnalysis(this.blockList);
+    }
+
+    public void doReachDefAnalysis() {
+        ReachDefAnalysis.doAnalysis(this.blockList);
+    }
+
+    public void markLoops() {
+
+    }
+
     public void printFuncBlocks() {
         System.out.println("func " + funcName);
         System.out.println("root " + root);

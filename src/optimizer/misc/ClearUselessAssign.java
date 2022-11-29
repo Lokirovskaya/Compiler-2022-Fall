@@ -4,7 +4,6 @@ import intercode.Operand.VirtualReg;
 import intercode.Quaternion;
 import optimizer.block.Block;
 import optimizer.block.FuncBlocks;
-import optimizer.block.LivenessAnalysis;
 import optimizer.block.SplitBlock;
 
 import java.util.HashSet;
@@ -26,7 +25,7 @@ public class ClearUselessAssign {
     // 倒序遍历基本块中的语句，求出语句级的 out，方法：每结束遍历一条语句，将它使用的所有变量加入 out 中
     // 若某个语句的 target 不在语句的 out 中，它就是无用的赋值
     private static void runClear(FuncBlocks funcBlocks) {
-        LivenessAnalysis.doAnalysis(funcBlocks);
+        funcBlocks.doLivenessAnalysis();
 
         for (Block block : funcBlocks.blockList) {
             Set<VirtualReg> out = new HashSet<>(block.livenessFlow.out);

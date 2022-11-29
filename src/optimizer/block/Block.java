@@ -1,7 +1,6 @@
 package optimizer.block;
 
 import intercode.Label;
-import intercode.Operand;
 import intercode.Operand.VirtualReg;
 import intercode.Quaternion;
 
@@ -15,12 +14,14 @@ public class Block {
     public static Map<Label, Block> labelBlockMap = new HashMap<>();
     // 可达性分析
     public boolean isReachable;
+    // 循环层数
+    public int loopLayer = -1;
 
 
     // 活跃变量分析
     public LivenessFlow livenessFlow;
     // 可用表达式分析
-    public ReachDefAnalysis reachDefAnalysis;
+    public ReachDefFlow reachDefFlow;
 
     public static class LivenessFlow {
         public Set<VirtualReg>
@@ -30,7 +31,7 @@ public class Block {
                 def = new HashSet<>();
     }
 
-    public static class ReachDefAnalysis {
+    public static class ReachDefFlow {
         public Set<VirtualReg>
                 in = new HashSet<>(),
                 out = new HashSet<>(),

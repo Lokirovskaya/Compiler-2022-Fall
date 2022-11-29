@@ -4,7 +4,6 @@ import intercode.Operand.VirtualReg;
 import intercode.Quaternion;
 import optimizer.block.Block;
 import optimizer.block.FuncBlocks;
-import optimizer.block.LivenessAnalysis;
 import util.Pair;
 
 import java.util.*;
@@ -26,7 +25,7 @@ class CalcIntervals {
             }
         };
 
-        LivenessAnalysis.doAnalysis(funcBlocks);
+        funcBlocks.doLivenessAnalysis();
 
         for (int i = funcBlocks.blockList.size() - 1; i >= 0; i--) {
             Block block = funcBlocks.blockList.get(i);

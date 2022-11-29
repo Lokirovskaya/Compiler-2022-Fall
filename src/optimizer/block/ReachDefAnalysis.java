@@ -1,4 +1,9 @@
 package optimizer.block;
 
-public class ReachDefAnalysis {
+import java.util.List;
+
+class ReachDefAnalysis {
+    static void doAnalysis(List<Block> blockList) {
+
+    }
 }

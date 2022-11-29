@@ -4,12 +4,13 @@ import intercode.Operand;
 import intercode.Quaternion;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
-public class LivenessAnalysis {
-    public static void doAnalysis(FuncBlocks funcBlocks) {
+class LivenessAnalysis {
+    static void doAnalysis(List<Block> blockList) {
         // 计算所有 block 的 use 和 def
-        for (Block block : funcBlocks.blockList) {
+        for (Block block : blockList) {
             block.livenessFlow = new Block.LivenessFlow();
 
             for (Quaternion q : block.blockInter) {
@@ -31,8 +32,8 @@ public class LivenessAnalysis {
         // 计算 in 和 out
         while (true) {
             boolean changed = false;
-            for (int i = funcBlocks.blockList.size() - 1; i >= 0; i--) {
-                Block block = funcBlocks.blockList.get(i);
+            for (int i = blockList.size() - 1; i >= 0; i--) {
+                Block block = blockList.get(i);
                 if (block.next != null) block.livenessFlow.out.addAll(block.next.livenessFlow.in);
                 if (block.jumpNext != null) block.livenessFlow.out.addAll(block.jumpNext.livenessFlow.in);
                 // in = use ∪ (out – def)
