@@ -68,7 +68,6 @@ public class Generator {
     private VirtualReg getVarReg(Token varIdent) {
         assert varIdent.isType(IDENTIFIER);
         Symbol.Var var = getVar(varIdent);
-        assert !(var.isGlobal() && var.isArray());
         if (var.reg == null) {
             var.reg = newReg();
             var.reg.name = var.name;
@@ -191,7 +190,11 @@ public class Generator {
             }
         }
 
-        if (alloc != null) inter.add(alloc);
+        if (alloc != null) {
+            inter.add(alloc);
+            if (var.isGlobal())
+                newQuater(OperatorType.LOAD_GLOBAL_ADDR, getVarReg(ident), null, null, getVarTag(ident));
+        }
     }
 
     // InitVal → Exp | '{' [ InitVal { ',' InitVal } ] '}'
@@ -298,10 +301,7 @@ public class Generator {
                         .map(e -> EXPRESSION((Nonterminal) e))
                         .collect(Collectors.toList());
                 Operand linearOffset = getLinearOffset(var, offset);
-                if (var.isGlobal())
-                    newQuater(OperatorType.SET_GLOBAL_ARRAY, null, linearOffset, expAns, getVarTag(ident));
-                else
-                    newQuater(OperatorType.SET_ARRAY, getVarReg(ident), linearOffset, expAns, null);
+                newQuater(OperatorType.SET_ARRAY, getVarReg(ident), linearOffset, expAns, null);
             }
             else {
                 newQuater(OperatorType.SET, getVarReg(ident), expAns, null, null);
@@ -559,17 +559,11 @@ public class Generator {
             VirtualReg arrAns = newReg();
             // 完全取地址
             if (var.dimension == offset.size()) {
-                if (var.isGlobal())
-                    newQuater(OperatorType.GET_GLOBAL_ARRAY, arrAns, null, linearOffset, getVarTag(ident));
-                else
-                    newQuater(OperatorType.GET_ARRAY, arrAns, getVarReg(ident), linearOffset, null);
+                newQuater(OperatorType.GET_ARRAY, arrAns, getVarReg(ident), linearOffset, null);
             }
             // 不完全取地址，返回仍是一个地址
             else {
-                if (var.isGlobal())
-                    newQuater(OperatorType.ADD_GLOBAL_ADDR, arrAns, null, linearOffset, getVarTag(ident));
-                else
-                    newQuater(OperatorType.ADD_ADDR, arrAns, getVarReg(ident), linearOffset, null);
+                newQuater(OperatorType.ADD_ADDR, arrAns, getVarReg(ident), linearOffset, null);
                 arrAns.isAddr = true;
             }
             return arrAns;

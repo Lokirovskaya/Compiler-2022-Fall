@@ -40,14 +40,13 @@ public class InlineGlobalVar {
             }
         }
 
-        // 将需要内联的全局变量复制为 inlinedVar，加入到每个函数的开头
-        // 同时，替换函数内所有对全局变量的引用为对 inlinedVar 的引用
+        // 替换函数内所有对全局变量的引用为对 inlinedVar 的引用
+        // 将需要内联的全局变量赋值为 inlinedVar，加入到每个函数的开头
         gVarFuncMap.forEach((var, func) -> {
             List<Quaternion> funcInter = func.funcInter;
             InstNumber inst = gVarInstMap.get(var);
             VirtualReg inlinedVar = VirtualRegFactory.newCopyReg(var);
             inlinedVar.isGlobal = false;
-            funcInter.add(1, new Quaternion(SET, inlinedVar, inst, null, null));
 
             for (Quaternion q : funcInter) {
                 if (Objects.equals(q.target, var)) q.target = inlinedVar;
@@ -57,6 +56,11 @@ public class InlineGlobalVar {
                     if (Objects.equals(q.list.get(i), var)) q.list.set(i, inlinedVar);
                 }
             }
+
+            if (inst != null)
+                funcInter.add(1, new Quaternion(SET, inlinedVar, inst, null, null));
+            else
+                funcInter.add(1, new Quaternion(SET, inlinedVar, var, null, null));
         });
 
 

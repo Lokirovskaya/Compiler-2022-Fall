@@ -16,6 +16,9 @@ public class OptimizeInter {
 
         ReduceBranch.run(inter);
 
+        RearrangeInst.run(inter);
+        MergeCondToBranch.run(inter);
+
         InlineFunc.run(inter);
         ReduceBranch.run(inter);
 
@@ -44,10 +47,8 @@ public class OptimizeInter {
         MergePrint.run(inter);
         WeakenRedundantCalc.run(inter);
 
-        ClearUselessAssign.run(inter);
 
-        RearrangeInst.run(inter);
-        MergeCondToBranch.run(inter);
+        ClearUselessAssign.run(inter);
 
         RegAlloc.run(inter);
     }

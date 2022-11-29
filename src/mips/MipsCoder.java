@@ -334,16 +334,6 @@ public class MipsCoder {
                     }
                     break;
                 }
-                case GET_GLOBAL_ARRAY:
-                    // @t = @label[@x2]
-                    if (q.x2 instanceof InstNumber) {
-                        addRegMips(String.format("lw @t, @label + %d", ((InstNumber) q.x2).number * 4), q);
-                    }
-                    else {
-                        addRegMips("sll $t9, @rx2, 2", q);
-                        addRegMips("lw @t, @label($t9)", q);
-                    }
-                    break;
                 case SET_ARRAY: {
                     // @t[@x1] = @x2，@t 在这里不会被改变，因此不要使用含有 @t 的 addRegMips
                     // 最终形式为 sw valueReg, offsetReg(baseReg)
@@ -360,17 +350,6 @@ public class MipsCoder {
                     }
                     break;
                 }
-                case SET_GLOBAL_ARRAY:
-                    // @label[@x1] = @x2
-                    if (q.x1 instanceof InstNumber) {
-                        addRegMips(String.format("sw @rx2, @label + %d", ((InstNumber) q.x1).number * 4), q);
-                    }
-                    else {
-                        String indexReg = loadVregToReg((VirtualReg) q.x1, "$t8");
-                        addMips("sll $t8, %s, 2", indexReg, indexReg);
-                        addRegMips("sw @rx2, @label($t8)", q);
-                    }
-                    break;
                 case ADD_ADDR:
                     // @&t = @&x1 + @x2
                     assert q.target.isAddr;
@@ -383,16 +362,8 @@ public class MipsCoder {
                         addRegMips("add @t, @rx1, $t9", q);
                     }
                     break;
-                case ADD_GLOBAL_ADDR:
-                    // @&t = @label + @x2
-                    addMips("la $t8, %s", q.label);
-                    if (q.x2 instanceof InstNumber) {
-                        addRegMips(String.format("add @t, $t8, %d", ((InstNumber) q.x2).number * 4), q);
-                    }
-                    else {
-                        addRegMips("sll $t9, @rx2, 2", q);
-                        addRegMips("add @t, $t8, $t9", q);
-                    }
+                case LOAD_GLOBAL_ADDR:
+                    addRegMips("la @t, @label", q);
                     break;
                 case ADD:
                     addRegMips("add @t, @rx1, @x2", q);

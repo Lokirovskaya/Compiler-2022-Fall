@@ -77,7 +77,7 @@ public class Quaternion {
     public enum OperatorType {
         ADD, SUB, MULT, DIV, MOD, NEG, NOT, EQ, NOT_EQ, LESS, LESS_EQ, GREATER, GREATER_EQ,
         IF, GOTO, FUNC, CALL, RETURN, ENTER_MAIN, SET_RETURN, GET_RETURN,
-        SET, GET_ARRAY, SET_ARRAY, ADD_ADDR, GET_GLOBAL_ARRAY, SET_GLOBAL_ARRAY, ADD_GLOBAL_ADDR,
+        SET, GET_ARRAY, SET_ARRAY, ADD_ADDR, LOAD_GLOBAL_ADDR, SHIFT_LEFT,
         LABEL, ALLOC, GLOBAL_ALLOC,
         GETINT, PRINT_STR, PRINT_INT, PRINT_CHAR,
         // 优化中会出现的操作码
@@ -93,12 +93,11 @@ public class Quaternion {
         else if (op == DIV) return String.format("%s = %s / %s", target, x1, x2);
         else if (op == MOD) return String.format("%s = %s %% %s", target, x1, x2);
         else if (op == NEG) return String.format("%s = -%s", target, x1);
+        else if (op == SHIFT_LEFT) return String.format("%s = %s << %s", target, x1, x2);
         else if (op == GET_ARRAY) return String.format("%s = %s[%s]", target, x1, x2);
         else if (op == SET_ARRAY) return String.format("%s[%s] = %s", target, x1, x2);
         else if (op == ADD_ADDR) return String.format("%s = &(%s[%s])", target, x1, x2);
-        else if (op == GET_GLOBAL_ARRAY) return String.format("%s = %s[%s]", target, label, x2);
-        else if (op == SET_GLOBAL_ARRAY) return String.format("%s[%s] = %s", label, x1, x2);
-        else if (op == ADD_GLOBAL_ADDR) return String.format("%s = &(%s[%s])", target, label, x2);
+        else if (op == LOAD_GLOBAL_ADDR) return String.format("%s = &(%s)", target, label);
         else if (op == IF) return String.format("if %s goto %s", x1, label);
         else if (op == IF_NOT) return String.format("if_not %s goto %s", x1, label);
         else if (op == IF_EQ) return String.format("if_cond %s == %s goto %s", x1, x2, label);

@@ -14,7 +14,7 @@ import static intercode.Quaternion.OperatorType.FUNC;
 import static intercode.Quaternion.OperatorType.LABEL;
 
 public class ResultOutput {
-    private static final boolean SHOW_ALLOC_INFO = false;
+    private static final boolean SHOW_ALLOC_INFO = true;
 
     public static void output(List<Quaternion> inter, String filename) throws IOException {
         StringBuilder sb = new StringBuilder();
