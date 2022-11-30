@@ -2,8 +2,7 @@ package optimizer;
 
 import intercode.Quaternion;
 import optimizer.constant.*;
-import optimizer.inline.InlineFunc;
-import optimizer.inline.InlineGlobalVar;
+import optimizer.misc.InlineFunc;
 import optimizer.misc.*;
 import optimizer.peephole.*;
 import optimizer.register.*;
@@ -37,7 +36,6 @@ public class OptimizeInter {
             ConstPropagationBlock.run(inter);
             ClearDeadCode.run(inter);
         }
-        InlineGlobalVar.run(inter);
         for (int i = 0; i < pass; i++) {
             ConstPropagationBlock.run(inter);
             ClearDeadCode.run(inter);
@@ -45,8 +43,11 @@ public class OptimizeInter {
 
         ReduceBranch.run(inter);
         MergePrint.run(inter);
-        WeakenRedundantCalc.run(inter);
 
+        WeakenRedundantCalc.run(inter);
+        ModToDiv.run(inter);
+
+        CommonSubexpElim.run(inter);
 
         ClearUselessAssign.run(inter);
 

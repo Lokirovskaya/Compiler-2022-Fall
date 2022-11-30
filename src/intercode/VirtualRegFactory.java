@@ -9,7 +9,7 @@ public class VirtualRegFactory {
         regIdx = 1;
     }
 
-    static VirtualReg newReg() {
+    public static VirtualReg newReg() {
         return new VirtualReg(regIdx++);
     }
 
