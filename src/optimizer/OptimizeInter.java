@@ -52,6 +52,7 @@ public class OptimizeInter {
         ClearUselessAssign.run(inter);
 
         RegAlloc.run(inter);
+        GlobalVarAlloc.run(inter);
     }
 
 }

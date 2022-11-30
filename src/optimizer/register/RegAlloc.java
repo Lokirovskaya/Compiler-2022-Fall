@@ -16,10 +16,18 @@ public class RegAlloc {
 
     public static void run(List<Quaternion> inter) {
         // 为中间代码编号
+        // 同时查询函数的最大参数个数，决定是否释放 $a1~$a3 寄存器
         int id = 1;
+        int maxParam = 0;
         for (Quaternion q : inter) {
             q.id = id++;
+            if (q.op == FUNC) maxParam = Math.max(maxParam, q.list.size());
         }
+
+        final int A1 = 5, A2 = 6, A3 = 7;
+        if (maxParam == 0 || maxParam == 1) RegPool.fullPool.addAll(Arrays.asList(A1, A2, A3));
+        if (maxParam == 2) RegPool.fullPool.addAll(Arrays.asList(A2, A3));
+        if (maxParam == 3) RegPool.fullPool.add(A3);
 
         for (FuncBlocks funcBlocks : SplitBlock.split(inter)) {
             List<Interval> intervalList = CalcIntervals.run(funcBlocks);
@@ -39,6 +47,7 @@ public class RegAlloc {
             List<Interval> result = new ArrayList<>();
 
             RegPool pool = new RegPool();
+
             for (Interval curInterval : unhandled) {
                 // 不要分配全局变量
                 if (curInterval.vreg.isGlobal) continue;
@@ -51,7 +60,7 @@ public class RegAlloc {
                     return interval.end() <= curInterval.start();
                 });
 
-                Integer reg = pool.get();
+                Integer reg = pool.fetch();
                 if (reg != null) {
                     curInterval.realReg = reg;
                     active.add(curInterval);
@@ -106,24 +115,5 @@ public class RegAlloc {
 
         // 删除无用赋值
         inter.removeIf(q -> q.isUselessAssign && q.op != GETINT);
-    }
-
-    private static class RegPool {
-        private final Deque<Integer> regPool = new ArrayDeque<>(Arrays.asList(
-                8, 9, 10, 11, 12, 13, 14, 15, // t0-t7
-                16, 17, 18, 19, 20, 21, 22, 23, // s0-s7
-                3, 26, 27, 30 // v1, k0, k1, fp
-        ));
-
-        // 若返回 null，表示池已空
-        Integer get() {
-            return regPool.pollFirst();
-        }
-
-        // 放回一个寄存器
-        void free(int reg) {
-            assert reg > 0;
-            regPool.addFirst(reg);
-        }
     }
 }
