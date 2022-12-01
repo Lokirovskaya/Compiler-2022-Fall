@@ -77,7 +77,7 @@ public class Quaternion {
     public enum OperatorType {
         ADD, SUB, MULT, DIV, MOD, NEG, NOT, EQ, NOT_EQ, LESS, LESS_EQ, GREATER, GREATER_EQ,
         IF, GOTO, FUNC, CALL, RETURN, ENTER_MAIN, SET_RETURN, GET_RETURN,
-        SET, GET_ARRAY, SET_ARRAY, ADD_ADDR, LOAD_GLOBAL_ADDR, SHIFT_LEFT,
+        SET, GET_ARRAY, SET_ARRAY, ADD_ADDR, LOAD_GLOBAL_ADDR,
         LABEL, ALLOC, GLOBAL_ALLOC,
         GETINT, PRINT_STR, PRINT_INT, PRINT_CHAR,
         // 优化中会出现的操作码
@@ -93,7 +93,6 @@ public class Quaternion {
         else if (op == DIV) return String.format("%s = %s / %s", target, x1, x2);
         else if (op == MOD) return String.format("%s = %s %% %s", target, x1, x2);
         else if (op == NEG) return String.format("%s = -%s", target, x1);
-        else if (op == SHIFT_LEFT) return String.format("%s = %s << %s", target, x1, x2);
         else if (op == GET_ARRAY) return String.format("%s = %s[%s]", target, x1, x2);
         else if (op == SET_ARRAY) return String.format("%s[%s] = %s", target, x1, x2);
         else if (op == ADD_ADDR) return String.format("%s = &(%s[%s])", target, x1, x2);
