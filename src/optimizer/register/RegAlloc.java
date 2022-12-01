@@ -25,6 +25,7 @@ public class RegAlloc {
         }
 
         final int A1 = 5, A2 = 6, A3 = 7;
+        RegPool.fullPool.removeAll(Arrays.asList(A1, A2, A3));
         if (maxParam == 0 || maxParam == 1) RegPool.fullPool.addAll(Arrays.asList(A1, A2, A3));
         if (maxParam == 2) RegPool.fullPool.addAll(Arrays.asList(A2, A3));
         if (maxParam == 3) RegPool.fullPool.add(A3);
