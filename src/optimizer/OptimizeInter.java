@@ -31,11 +31,7 @@ public class OptimizeInter {
         CopyPropagation.run(inter);
         ClearUselessAssign.run(inter);
 
-        final int pass = 2;
-        for (int i = 0; i < pass; i++) {
-            ConstPropagationBlock.run(inter);
-            ClearDeadCode.run(inter);
-        }
+        final int pass = 4;
         for (int i = 0; i < pass; i++) {
             ConstPropagationBlock.run(inter);
             ClearDeadCode.run(inter);

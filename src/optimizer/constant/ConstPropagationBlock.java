@@ -58,7 +58,7 @@ public class ConstPropagationBlock {
             }
 
             // 如果 use 中依然存在不定值（vreg），将 def 移出字典
-            if (q.getUseVregList().size() > 0) {
+            if (q.getUseVregList().size() > 0 || q.op == GETINT) {
                 q.getDefVregList().forEach(def -> vregConstMap.remove(def));
             }
         }
