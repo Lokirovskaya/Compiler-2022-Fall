@@ -30,6 +30,9 @@ public class FuncBlocks {
             if (block.livenessFlow != null) {
                 System.out.printf("in: %s, out: %s, def: %s, use: %s\n", Arrays.toString(block.livenessFlow.in.toArray()), Arrays.toString(block.livenessFlow.out.toArray()), Arrays.toString(block.livenessFlow.def.toArray()), Arrays.toString(block.livenessFlow.use.toArray()));
             }
+            if (block.reachDefFlow != null) {
+                System.out.printf("in: %s, out: %s, gen: %s, kill: %s\n", Arrays.toString(block.reachDefFlow.in.toArray()), Arrays.toString(block.reachDefFlow.out.toArray()), Arrays.toString(block.reachDefFlow.gen.toArray()), Arrays.toString(block.reachDefFlow.kill.toArray()));
+            }
             block.blockInter.forEach(q -> System.out.println("  " + q.id + " " + q));
         }
         System.out.println();

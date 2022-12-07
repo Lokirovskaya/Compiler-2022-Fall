@@ -8,7 +8,6 @@ public abstract class Operand {
         public boolean isAddr;
         public boolean isParam; // 形参？
         public boolean isGlobal;
-        public String name;
         // 储存管理相关
         public int realReg = -1;
         public int stackOffset = -1; // -1 表示未在栈上分配
@@ -24,9 +23,6 @@ public abstract class Operand {
             if (isGlobal) sb.append('@');
             if (isAddr) sb.append('&');
             sb.append(regID);
-            if (name != null) {
-                sb.append('_').append(name);
-            }
             return sb.toString();
         }
 

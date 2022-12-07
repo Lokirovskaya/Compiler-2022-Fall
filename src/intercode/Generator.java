@@ -70,7 +70,6 @@ public class Generator {
         Symbol.Var var = getVar(varIdent);
         if (var.reg == null) {
             var.reg = newReg();
-            var.reg.name = var.name;
             var.reg.isAddr = var.isArray();
             var.reg.isGlobal = (var.selfTable.id == 0);
         }
@@ -305,6 +304,7 @@ public class Generator {
             }
             else {
                 newQuater(OperatorType.SET, getVarReg(ident), expAns, null, null);
+//                inter.get(inter.size() - 1).target = getVarReg(ident);
             }
         }
         // [Exp] ';'

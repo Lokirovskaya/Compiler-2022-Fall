@@ -18,7 +18,6 @@ public class VirtualRegFactory {
         copyReg.isGlobal = sourceReg.isGlobal;
         copyReg.isAddr = sourceReg.isAddr;
         copyReg.isParam = sourceReg.isParam;
-        copyReg.name = sourceReg.name;
         return copyReg;
     }
 }

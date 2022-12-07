@@ -13,7 +13,7 @@ class ConstFolding {
     // 一元运算：
     // NEG, NOT, IF_NOT
     // 返回：是否折叠成功
-    static boolean foldQuater(Quaternion q) {
+    static void foldQuater(Quaternion q) {
         if (q.x1 instanceof InstNumber && q.x2 instanceof InstNumber) {
             int x1 = ((InstNumber) q.x1).number;
             int x2 = ((InstNumber) q.x2).number;
@@ -39,7 +39,7 @@ class ConstFolding {
                 q.op = SET;
                 q.x1 = new InstNumber(ans);
                 q.x2 = null;
-                return true;
+                return;
             }
 
             if (q.op == IF_EQ) ans = x1 == x2 ? 1 : 0;
@@ -52,7 +52,6 @@ class ConstFolding {
                 q.op = IF;
                 q.x1 = new InstNumber(ans);
                 q.x2 = null;
-                return true;
             }
         }
         else if (q.x1 instanceof InstNumber && q.x2 == null) {
@@ -63,15 +62,13 @@ class ConstFolding {
             if (ans != null) {
                 q.op = SET;
                 q.x1 = new InstNumber(ans);
-                return true;
+                return;
             }
 
             if (q.op == IF_NOT) {
                 q.op = IF;
                 q.x1 = new InstNumber(x != 0 ? 0 : 1);
-                return true;
             }
         }
-        return false;
     }
 }

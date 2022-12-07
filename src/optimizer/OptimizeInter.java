@@ -31,14 +31,14 @@ public class OptimizeInter {
         CopyPropagation.run(inter);
         ClearUselessAssign.run(inter);
 
+        ReduceBranch.run(inter);
+
         final int pass = 4;
         for (int i = 0; i < pass; i++) {
-            ConstPropagationBlock.run(inter);
+            ConstPropagation.run(inter);
             ClearDeadCode.run(inter);
+            ReduceBranch.run(inter);
         }
-
-        ReduceBranch.run(inter);
-        MergePrint.run(inter);
 
         WeakenRedundantCalc.run(inter);
         ModToDiv.run(inter);
@@ -46,6 +46,8 @@ public class OptimizeInter {
         CommonSubexpElim.run(inter);
 
         ClearUselessAssign.run(inter);
+
+        MergePrint.run(inter);
 
         RegAlloc.run(inter);
         GlobalVarAlloc.run(inter);

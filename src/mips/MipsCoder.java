@@ -25,7 +25,7 @@ public class MipsCoder {
 
     public void generateMips() {
         this.funcInfoMap = Allocator.alloc(inter);
-        funcInfoMap.values().forEach(System.out::println);
+//        funcInfoMap.values().forEach(System.out::println);
         generate();
     }
 

@@ -32,7 +32,7 @@ public class Block {
     }
 
     public static class ReachDefFlow {
-        public Set<VirtualReg>
+        public Set<Quaternion>
                 in = new HashSet<>(),
                 out = new HashSet<>(),
                 gen = new HashSet<>(),
