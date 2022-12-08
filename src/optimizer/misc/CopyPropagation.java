@@ -17,16 +17,16 @@ public class CopyPropagation {
         List<FuncBlocks> funcBlocksList = SplitBlock.split(inter);
         for (FuncBlocks funcBlocks : funcBlocksList) {
             for (Block block : funcBlocks.blockList) {
-                runCopyPropagation(block.blockInter);
+                runCopyPropagation(block);
             }
         }
 
         SplitBlock.join(funcBlocksList, inter);
     }
 
-    private static void runCopyPropagation(List<Quaternion> inter) {
+    private static void runCopyPropagation(Block block) {
         Map<VirtualReg, VirtualReg> vregMap = new HashMap<>();
-        for (Quaternion q : inter) {
+        for (Quaternion q : block.blockInter) {
             // kill 掉所有的涉及 def 的赋值
             for (VirtualReg def : q.getDefVregList()) {
                 vregMap.entrySet().removeIf(e -> def.equals(e.getKey()) || def.equals(e.getValue()));

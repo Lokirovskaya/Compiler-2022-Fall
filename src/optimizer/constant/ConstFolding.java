@@ -12,7 +12,6 @@ class ConstFolding {
     // IF_EQ, IF_NOT_EQ, IF_LESS, IF_LESS_EQ, IF_GREATER, IF_GREATER_EQ,
     // 一元运算：
     // NEG, NOT, IF_NOT
-    // 返回：是否折叠成功
     static void foldQuater(Quaternion q) {
         if (q.x1 instanceof InstNumber && q.x2 instanceof InstNumber) {
             int x1 = ((InstNumber) q.x1).number;
