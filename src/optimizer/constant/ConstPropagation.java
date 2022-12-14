@@ -20,7 +20,6 @@ public class ConstPropagation {
 
         for (FuncBlocks funcBlocks : funcBlocksList) {
             funcBlocks.doReachDefAnalysis();
-            funcBlocks.printFuncBlocks();
             for (Block block : funcBlocks.blockList) {
                 runBlockInter(block);
                 RearrangeInst.run(block.blockInter);

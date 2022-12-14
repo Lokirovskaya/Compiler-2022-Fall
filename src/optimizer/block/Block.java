@@ -13,7 +13,7 @@ public class Block {
     public Label jumpNextLabel;
     public static Map<Label, Block> labelBlockMap = new HashMap<>();
     // 可达性分析
-    public boolean isReachable;
+    public int visited;
     // 循环层数
     public int loopLayer = -1;
 

@@ -35,6 +35,7 @@ public class SplitBlock {
             }
 
             curBlock.blockInter.add(q);
+            q.block = curBlock;
 
             // 如果有 label，在表中记录 label 对应的 block
             if (q.op == LABEL) {

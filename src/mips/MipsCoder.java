@@ -387,13 +387,8 @@ public class MipsCoder {
                     }
                     break;
                 case MOD:
-                    if (q.x2 instanceof InstNumber) {
-                        addRegMips("rem @t, @rx1, @x2", q);
-                    }
-                    else {
-                        addRegMips("div @rx1, @rx2", q);
-                        addRegMips("mfhi @t", q);
-                    }
+                    addRegMips("div @rx1, @rx2", q);
+                    addRegMips("mfhi @t", q);
                     break;
                 case NEG:
                     if (q.x1 instanceof InstNumber)

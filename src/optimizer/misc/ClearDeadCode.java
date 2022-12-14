@@ -10,12 +10,12 @@ import java.util.List;
 public class ClearDeadCode {
     public static void run(List<Quaternion> inter) {
         List<FuncBlocks> funcBlocksList = SplitBlock.split(inter);
-        funcBlocksList.forEach(func -> func.blockList.forEach(block -> block.isReachable = false));
+        funcBlocksList.forEach(func -> func.blockList.forEach(block -> block.visited = 0));
         funcBlocksList.forEach(func -> runFuncBlocks(func.root));
         inter.clear();
         for (FuncBlocks funcBlocks : funcBlocksList) {
             for (Block block : funcBlocks.blockList) {
-                if (block.isReachable) {
+                if (block.visited > 0) {
                     inter.addAll(block.blockInter);
                 }
             }
@@ -24,8 +24,8 @@ public class ClearDeadCode {
     }
 
     private static void runFuncBlocks(Block block) {
-        block.isReachable = true;
-        if (block.next != null && !block.next.isReachable) runFuncBlocks(block.next);
-        if (block.jumpNext != null && !block.jumpNext.isReachable) runFuncBlocks(block.jumpNext);
+        block.visited = 1;
+        if (block.next != null && block.next.visited == 0) runFuncBlocks(block.next);
+        if (block.jumpNext != null && block.jumpNext.visited == 0) runFuncBlocks(block.jumpNext);
     }
 }

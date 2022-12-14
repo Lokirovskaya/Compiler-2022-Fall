@@ -1,6 +1,7 @@
 package intercode;
 
 import intercode.Operand.VirtualReg;
+import optimizer.block.Block;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +18,9 @@ public class Quaternion {
     // func：形参 vreg 表
     // call：实参 operand 表
     public List<Operand> list;
+    // 当前四元式所在的基本块
+    // SplitBlock 后更新
+    public Block block;
 
     public int id = -1; // 仅寄存器分配时用
     public Set<Integer> activeRegSet; // 当前指令之后仍然活跃的寄存器，只对 CALL 指令记录

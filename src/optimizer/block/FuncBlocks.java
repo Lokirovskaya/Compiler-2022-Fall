@@ -17,10 +17,6 @@ public class FuncBlocks {
         ReachDefAnalysis.doAnalysis(this.blockList);
     }
 
-    public void markLoops() {
-
-    }
-
     public void printFuncBlocks() {
         System.out.println("func " + funcName);
         System.out.println("root " + root);

@@ -2,7 +2,6 @@ package optimizer;
 
 import intercode.Quaternion;
 import optimizer.constant.*;
-import optimizer.misc.InlineFunc;
 import optimizer.misc.*;
 import optimizer.peephole.*;
 import optimizer.register.*;
@@ -18,6 +17,19 @@ public class OptimizeInter {
         RearrangeInst.run(inter);
         MergeCondToBranch.run(inter);
 
+        final int pass = 2;
+        for (int i = 0; i < pass; i++) {
+            ConstPropagation.run(inter);
+            ClearDeadCode.run(inter);
+            ReduceBranch.run(inter);
+        }
+
+        CommonSubexpElim.run(inter);
+        CopyPropagation.run(inter);
+        ClearUselessAssign.run(inter);
+
+        LoopInvariantMotion.run(inter);
+
         InlineFunc.run(inter);
         ReduceBranch.run(inter);
 
@@ -27,13 +39,11 @@ public class OptimizeInter {
         ClearUselessAssign.run(inter);
 
         CommonSubexpElim.run(inter);
-
         CopyPropagation.run(inter);
         ClearUselessAssign.run(inter);
 
         ReduceBranch.run(inter);
 
-        final int pass = 4;
         for (int i = 0; i < pass; i++) {
             ConstPropagation.run(inter);
             ClearDeadCode.run(inter);
