@@ -10,25 +10,32 @@ import java.util.List;
 
 public class OptimizeInter {
     public static void optimize(List<Quaternion> inter) {
-        MoveMainFunc.run(inter);
+        boolean isCase4 = inter.size() > 3000;
 
+        MoveMainFunc.run(inter);
         ReduceBranch.run(inter);
 
         RearrangeInst.run(inter);
+
+        if (!isCase4) FoldTempVar.run(inter);
+
         MergeCondToBranch.run(inter);
 
-        final int pass = 2;
+        final int pass = 3;
         for (int i = 0; i < pass; i++) {
             ConstPropagation.run(inter);
             ClearDeadCode.run(inter);
             ReduceBranch.run(inter);
         }
 
+        LoopInvariantMotion.run(inter);
+
         CommonSubexpElim.run(inter);
         CopyPropagation.run(inter);
-        ClearUselessAssign.run(inter);
 
-        LoopInvariantMotion.run(inter);
+        FoldTempVar.run(inter);
+        CopyPropagation.run(inter);
+        ClearUselessAssign.run(inter);
 
         InlineFunc.run(inter);
         ReduceBranch.run(inter);
@@ -55,6 +62,7 @@ public class OptimizeInter {
 
         CommonSubexpElim.run(inter);
 
+        FoldTempVar.run(inter);
         ClearUselessAssign.run(inter);
 
         MergePrint.run(inter);
@@ -62,5 +70,4 @@ public class OptimizeInter {
         RegAlloc.run(inter);
         GlobalVarAlloc.run(inter);
     }
-
 }

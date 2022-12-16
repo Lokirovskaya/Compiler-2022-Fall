@@ -382,8 +382,19 @@ public class MipsCoder {
                         addRegMips("div @t, @rx1, @x2", q);
                     }
                     else {
-                        addRegMips("div @rx1, @rx2", q);
-                        addRegMips("mflo @t", q);
+                        // hack
+                        if (q.x1 instanceof InstNumber && ((InstNumber) q.x1).number == 1) {
+                            String divisor = loadVregToReg((VirtualReg) q.x2, "$t9");
+                            addMips("srl $t8, %s, 31", divisor);
+                            addMips("add $t8, %s, $t8", divisor);
+                            addMips("srl $t8, $t8, 1");
+                            addRegMips("move @t, " + divisor, q);
+                            addRegMips("movn @t, $zero, $t8", q);
+                        }
+                        else {
+                            addRegMips("div @rx1, @rx2", q);
+                            addRegMips("mflo @t", q);
+                        }
                     }
                     break;
                 case MOD:
