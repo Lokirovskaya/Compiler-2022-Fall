@@ -79,6 +79,7 @@ public class Quaternion {
     }
 
     public enum OperatorType {
+        AND,
         ADD, SUB, MULT, DIV, MOD, NEG, NOT, EQ, NOT_EQ, LESS, LESS_EQ, GREATER, GREATER_EQ,
         IF, GOTO, FUNC, CALL, RETURN, ENTER_MAIN, SET_RETURN, GET_RETURN,
         SET, GET_ARRAY, SET_ARRAY, ADD_ADDR, LOAD_GLOBAL_ADDR,
@@ -91,6 +92,7 @@ public class Quaternion {
     @Override
     public String toString() {
         if (op == SET) return String.format("%s = %s", target, x1);
+        else if (op == AND) return String.format("%s = %s & %s", target, x1, x2);
         else if (op == ADD) return String.format("%s = %s + %s", target, x1, x2);
         else if (op == SUB) return String.format("%s = %s - %s", target, x1, x2);
         else if (op == MULT) return String.format("%s = %s * %s", target, x1, x2);

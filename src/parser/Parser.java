@@ -70,7 +70,8 @@ public class Parser {
             }
         }
         if (match) treeBuilder.addNode(token);
-        else System.err.printf("Unexpected token '%s' at line %d, expect %s and others\n", token.value, token.lineNumber, judges[0].name());
+        else
+            System.err.printf("Unexpected token '%s' at line %d, expect %s and others\n", token.value, token.lineNumber, judges[0].name());
         tokenReader.next();
     }
 
@@ -192,7 +193,14 @@ public class Parser {
         }
         if (tokenReader.read() == ASSIGN) {
             consume(ASSIGN);
-            VAR_INIT_VALUE();
+            if (tokenReader.read() == GETINT) {
+                consume(GETINT);
+                consume(LEFT_PAREN);
+                consume(RIGHT_PAREN);
+            }
+            else {
+                VAR_INIT_VALUE();
+            }
         }
         endNonterminal();
     }
@@ -416,8 +424,9 @@ public class Parser {
         // 消除左递归：MulExp → UnaryExp { ('*'|'/'|'%') UnaryExp }
         createNonterminal(_MULTIPLY_EXPRESSION_);
         UNARY_EXPRESSION();
-        while (tokenReader.read() == MULTIPLY || tokenReader.read() == DIVIDE || tokenReader.read() == MOD) {
-            consume(MULTIPLY, DIVIDE, MOD);
+        while (tokenReader.read() == MULTIPLY || tokenReader.read() == DIVIDE || tokenReader.read() == MOD
+                || tokenReader.read() == BITAND) {
+            consume(MULTIPLY, DIVIDE, MOD, BITAND);
             UNARY_EXPRESSION();
         }
         endNonterminal();

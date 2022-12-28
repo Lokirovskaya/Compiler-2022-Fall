@@ -182,6 +182,10 @@ public class Generator {
                 }
             }
         }
+        // Ident '=' 'getint' '(' ')'
+        else if (initVal.isType(RIGHT_PAREN)) {
+            newQuater(OperatorType.GETINT, getVarReg(ident), null, null, null);
+        }
         // 没有初值的全局变量，应该要赋值为 0
         else {
             if (var.isGlobal() && !var.isArray()) {
@@ -439,6 +443,7 @@ public class Generator {
             OperatorType op;
             if (exp.child(1).isType(MULTIPLY)) op = OperatorType.MULT;
             else if (exp.child(1).isType(DIVIDE)) op = OperatorType.DIV;
+            else if (exp.child(1).isType(BITAND)) op = OperatorType.AND;
             else op = OperatorType.MOD;
             Operand multAns = MULTIPLY_EXPRESSION((Nonterminal) exp.child(0));
             Operand unaryAns = UNARY_EXPRESSION((Nonterminal) exp.child(2));
@@ -448,6 +453,7 @@ public class Generator {
                 int y;
                 if (op == OperatorType.MULT) y = x1 * x2;
                 else if (op == OperatorType.DIV) y = x1 / x2;
+                else if (op == OperatorType.AND) y = (x1 & x2);
                 else y = x1 % x2;
                 return new InstNumber(y);
             }

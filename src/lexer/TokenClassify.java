@@ -20,6 +20,7 @@ class TokenClassify {
     private static final Map<String, Token.TokenType> tokenValueTypeMap = new HashMap<>();
 
     static {
+        tokenValueTypeMap.put("bitand", BITAND);
         tokenValueTypeMap.put("main", MAIN);
         tokenValueTypeMap.put("const", CONST);
         tokenValueTypeMap.put("int", INT);

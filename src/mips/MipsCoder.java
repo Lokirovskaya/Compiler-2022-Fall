@@ -365,6 +365,12 @@ public class MipsCoder {
                 case LOAD_GLOBAL_ADDR:
                     addRegMips("la @t, @label", q);
                     break;
+                case AND:
+                    if (q.x2 instanceof InstNumber)
+                        addRegMips("andi @t, @rx1, @x2", q);
+                    else
+                        addRegMips("and @t, @rx1, @rx2", q);
+                    break;
                 case ADD:
                     addRegMips("add @t, @rx1, @x2", q);
                     break;
